@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  password     String
+  role         UserRole
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  admin        Admin?
+  coach        Coach?
+  learner      Learner?
+  restaurateur Restaurateur?
+  vigil        Vigil?
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  firstName String
+  lastName  String
+  phone     String?
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Coach {
+  id          String            @id @default(uuid())
+  firstName   String
+  lastName    String
+  phone       String?
+  photoUrl    String?
+  userId      String            @unique
+  refId       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  referential Referential?      @relation(fields: [refId], references: [id])
+  user        User              @relation(fields: [userId], references: [id])
+  attendances CoachAttendance[]
+  modules     Module[]
+}
+
+model Vigil {
+  id        String   @id @default(uuid())
+  firstName String
+  lastName  String
+  phone     String?
+  photoUrl  String?
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Restaurateur {
+  id        String   @id @default(uuid())
+  firstName String
+  lastName  String
+  phone     String?
+  photoUrl  String?
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Learner {
+  id          String              @id @default(uuid())
+  firstName   String
+  lastName    String
+  address     String?
+  gender      Gender
+  birthDate   DateTime
+  birthPlace  String
+  phone       String
+  photoUrl    String?
+  status      LearnerStatus       @default(ACTIVE)
+  qrCode      String              @unique
+  userId      String              @unique
+  refId       String?
+  promotionId String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  documents   Document[]
+  grades      Grade[]
+  kit         Kit?
+  promotion   Promotion           @relation(fields: [promotionId], references: [id])
+  referential Referential?        @relation(fields: [refId], references: [id])
+  user        User                @relation(fields: [userId], references: [id])
+  attendances LearnerAttendance[]
+  meals       Meal[]
+  tutor       Tutor?
+}
+
+model Tutor {
+  id        String   @id @default(uuid())
+  firstName String
+  lastName  String
+  phone     String
+  email     String?
+  address   String?
+  learnerId String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  learner   Learner  @relation(fields: [learnerId], references: [id])
+}
+
+model Kit {
+  id        String   @id @default(uuid())
+  laptop    Boolean  @default(false)
+  charger   Boolean  @default(false)
+  bag       Boolean  @default(false)
+  polo      Boolean  @default(false)
+  learnerId String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  learner   Learner  @relation(fields: [learnerId], references: [id])
+}
+
+model Promotion {
+  id           String          @id @default(uuid())
+  name         String
+  startDate    DateTime
+  endDate      DateTime
+  photoUrl     String?
+  status       PromotionStatus @default(ACTIVE)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  events       Event[]
+  learners     Learner[]
+  referentials Referential[]
+}
+
+model Referential {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  photoUrl    String?
+  capacity    Int
+  promotionId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  coaches     Coach[]
+  learners    Learner[]
+  modules     Module[]
+  promotion   Promotion @relation(fields: [promotionId], references: [id])
+}
+
+model Module {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  coachId     String
+  refId       String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  grades      Grade[]
+  coach       Coach       @relation(fields: [coachId], references: [id])
+  referential Referential @relation(fields: [refId], references: [id])
+}
+
+model Grade {
+  id        String   @id @default(uuid())
+  value     Float
+  comment   String?
+  moduleId  String
+  learnerId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  learner   Learner  @relation(fields: [learnerId], references: [id])
+  module    Module   @relation(fields: [moduleId], references: [id])
+}
+
+model LearnerAttendance {
+  id            String        @id @default(uuid())
+  date          DateTime
+  isPresent     Boolean
+  isLate        Boolean       @default(false)
+  scanTime      DateTime?
+  justification String?
+  status        AbsenceStatus @default(PENDING)
+  documentUrl   String?
+  learnerId     String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  learner       Learner       @relation(fields: [learnerId], references: [id])
+}
+
+model CoachAttendance {
+  id        String    @id @default(uuid())
+  date      DateTime
+  isPresent Boolean
+  isLate    Boolean   @default(false)
+  scanTime  DateTime?
+  coachId   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  coach     Coach     @relation(fields: [coachId], references: [id])
+}
+
+model Meal {
+  id        String   @id @default(uuid())
+  date      DateTime
+  type      String
+  learnerId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  learner   Learner  @relation(fields: [learnerId], references: [id])
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  name      String
+  type      String
+  url       String
+  learnerId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  learner   Learner  @relation(fields: [learnerId], references: [id])
+}
+
+model Event {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  type        String
+  location    String?
+  promotionId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  promotion   Promotion @relation(fields: [promotionId], references: [id])
+}
+
+enum UserRole {
+  ADMIN
+  COACH
+  VIGIL
+  RESTAURATEUR
+  APPRENANT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum LearnerStatus {
+  ACTIVE
+  REPLACED
+  REPLACEMENT
+  ABANDONED
+}
+
+enum PromotionStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AbsenceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
