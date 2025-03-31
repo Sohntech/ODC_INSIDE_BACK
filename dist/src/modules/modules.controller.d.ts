@@ -1,72 +1,79 @@
 import { ModulesService } from './modules.service';
+import { CreateModuleDto } from './dto/create-module.dto';
 export declare class ModulesController {
     private readonly modulesService;
     constructor(modulesService: ModulesService);
-    create(data: any): Promise<{
+    create(createModuleDto: CreateModuleDto, photoFile?: Express.Multer.File): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
-        description: string | null;
+        photoUrl: string | null;
         refId: string;
+        coachId: string;
+        description: string | null;
         startDate: Date;
         endDate: Date;
-        coachId: string;
     }>;
     findAll(): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
-        description: string | null;
+        photoUrl: string | null;
         refId: string;
+        coachId: string;
+        description: string | null;
         startDate: Date;
         endDate: Date;
-        coachId: string;
     }[]>;
     getActiveModules(): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
-        description: string | null;
+        photoUrl: string | null;
         refId: string;
+        coachId: string;
+        description: string | null;
         startDate: Date;
         endDate: Date;
-        coachId: string;
     }[]>;
     getModulesByReferential(refId: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
-        description: string | null;
+        photoUrl: string | null;
         refId: string;
+        coachId: string;
+        description: string | null;
         startDate: Date;
         endDate: Date;
-        coachId: string;
     }[]>;
     findOne(id: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
-        description: string | null;
+        photoUrl: string | null;
         refId: string;
+        coachId: string;
+        description: string | null;
         startDate: Date;
         endDate: Date;
-        coachId: string;
     }>;
     update(id: string, data: any): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
-        description: string | null;
+        photoUrl: string | null;
         refId: string;
+        coachId: string;
+        description: string | null;
         startDate: Date;
         endDate: Date;
-        coachId: string;
     }>;
     addGrade(moduleId: string, data: {
         learnerId: string;
@@ -75,19 +82,19 @@ export declare class ModulesController {
     }): Promise<{
         learner: {
             id: string;
+            status: import(".prisma/client").$Enums.LearnerStatus;
             createdAt: Date;
             updatedAt: Date;
             firstName: string;
             lastName: string;
-            phone: string;
-            userId: string;
             address: string | null;
             gender: import(".prisma/client").$Enums.Gender;
             birthDate: Date;
             birthPlace: string;
+            phone: string;
             photoUrl: string | null;
-            status: import(".prisma/client").$Enums.LearnerStatus;
             qrCode: string;
+            userId: string;
             refId: string | null;
             promotionId: string;
         };
@@ -96,19 +103,20 @@ export declare class ModulesController {
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            description: string | null;
+            photoUrl: string | null;
             refId: string;
+            coachId: string;
+            description: string | null;
             startDate: Date;
             endDate: Date;
-            coachId: string;
         };
     } & {
         id: string;
+        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
-        learnerId: string;
-        value: number;
         comment: string | null;
+        value: number;
         moduleId: string;
     }>;
     updateGrade(gradeId: string, data: {
@@ -117,19 +125,19 @@ export declare class ModulesController {
     }): Promise<{
         learner: {
             id: string;
+            status: import(".prisma/client").$Enums.LearnerStatus;
             createdAt: Date;
             updatedAt: Date;
             firstName: string;
             lastName: string;
-            phone: string;
-            userId: string;
             address: string | null;
             gender: import(".prisma/client").$Enums.Gender;
             birthDate: Date;
             birthPlace: string;
+            phone: string;
             photoUrl: string | null;
-            status: import(".prisma/client").$Enums.LearnerStatus;
             qrCode: string;
+            userId: string;
             refId: string | null;
             promotionId: string;
         };
@@ -138,19 +146,20 @@ export declare class ModulesController {
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            description: string | null;
+            photoUrl: string | null;
             refId: string;
+            coachId: string;
+            description: string | null;
             startDate: Date;
             endDate: Date;
-            coachId: string;
         };
     } & {
         id: string;
+        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
-        learnerId: string;
-        value: number;
         comment: string | null;
+        value: number;
         moduleId: string;
     }>;
 }

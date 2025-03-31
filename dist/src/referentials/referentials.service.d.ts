@@ -8,7 +8,6 @@ export declare class ReferentialsService {
         description?: string;
         photoUrl?: string;
         capacity: number;
-        promotionId: string;
     }): Promise<Referential>;
     findAll(): Promise<Referential[]>;
     findOne(id: string): Promise<Referential>;
@@ -19,5 +18,25 @@ export declare class ReferentialsService {
         totalCoaches: number;
         capacity: number;
         availableSpots: number;
+    }>;
+    assignToPromotion(referentialIds: string[], promotionId: string): Promise<{
+        referentials: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            photoUrl: string | null;
+            description: string | null;
+            capacity: number;
+        }[];
+    } & {
+        id: string;
+        status: import(".prisma/client").$Enums.PromotionStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        photoUrl: string | null;
+        startDate: Date;
+        endDate: Date;
     }>;
 }

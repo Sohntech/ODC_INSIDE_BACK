@@ -11,14 +11,18 @@ export class ReferentialsService {
     description?: string;
     photoUrl?: string;
     capacity: number;
-    promotionId: string;
   }): Promise<Referential> {
+    // Remove promotionId dependency
     return this.prisma.referential.create({
-      data,
+      data: {
+        ...data,
+        promotions: undefined, // Provide a default value or adjust as needed
+      },
       include: {
         learners: true,
         coaches: true,
         modules: true,
+        promotions: true, // Include promotions in response
       },
     });
   }
@@ -94,5 +98,20 @@ export class ReferentialsService {
       capacity: referential.capacity,
       availableSpots: referential.capacity - totalLearners,
     };
+  }
+
+  // Add method to assign referentials to a promotion
+  async assignToPromotion(referentialIds: string[], promotionId: string) {
+    return this.prisma.promotion.update({
+      where: { id: promotionId },
+      data: {
+        referentials: {
+          connect: referentialIds.map(id => ({ id })),
+        },
+      },
+      include: {
+        referentials: true,
+      },
+    });
   }
 }

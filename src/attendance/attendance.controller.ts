@@ -9,21 +9,30 @@ import {
   UseInterceptors,
   UploadedFile,
   HttpStatus,
+  InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiParam } from '@nestjs/swagger';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole, AbsenceStatus } from '@prisma/client';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { UpdateAbsenceStatusDto } from './dto/update-absence-status.dto';
 
 @ApiTags('attendance')
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class AttendanceController {
-  constructor(private readonly attendanceService: AttendanceService) {}
+  private readonly logger = new Logger(AttendanceController.name);
+
+  constructor(
+    private readonly attendanceService: AttendanceService,
+    private readonly cloudinaryService: CloudinaryService
+  ) {}
 
   @Post('learner/:id/scan')
   @Roles(UserRole.VIGIL)
@@ -50,9 +59,15 @@ export class AttendanceController {
     @UploadedFile() document?: Express.Multer.File,
   ) {
     let documentUrl: string | undefined;
+    
     if (document) {
-      // Upload document to Cloudinary and get URL
-      // documentUrl = await this.cloudinaryService.uploadFile(document);
+      try {
+        const uploadResult = await this.cloudinaryService.uploadFile(document, 'justifications');
+        documentUrl = uploadResult.url;
+      } catch (error) {
+        this.logger.error(`Failed to upload justification document: ${error.message}`);
+        throw new InternalServerErrorException('Failed to upload document');
+      }
     }
 
     return this.attendanceService.submitAbsenceJustification(
@@ -64,12 +79,13 @@ export class AttendanceController {
 
   @Put('absence/:id/status')
   @Roles(UserRole.ADMIN, UserRole.COACH)
-  @ApiOperation({ summary: 'Mettre à jour le statut d\'une absence' })
+  @ApiOperation({ summary: 'Update absence justification status' })
+  @ApiParam({ name: 'id', description: 'Attendance ID' })
   async updateAbsenceStatus(
     @Param('id') id: string,
-    @Body('status') status: AbsenceStatus,
+    @Body() updateDto: UpdateAbsenceStatusDto
   ) {
-    return this.attendanceService.updateAbsenceStatus(id, status);
+    return this.attendanceService.updateAbsenceStatus(id, updateDto.status, updateDto.comment);
   }
 
   @Get('scans/latest')

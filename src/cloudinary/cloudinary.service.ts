@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 import { ConfigService } from '@nestjs/config';
+import * as streamifier from 'streamifier';
 
 @Injectable()
 export class CloudinaryService {
@@ -38,57 +39,36 @@ export class CloudinaryService {
     }
   }
 
-  async uploadFile(
-    file: Express.Multer.File,
-    folder: string,
-  ): Promise<{ url: string; public_id: string }> {
+  async uploadFile(file: Express.Multer.File, folder: string): Promise<{ url: string }> {
     if (!this.isConfigured) {
-      this.logger.error('Cloudinary is not configured');
       throw new Error('Cloudinary is not configured');
     }
-    
-    this.logger.log(`Attempting to upload file ${file.originalname} to folder ${folder}`);
-    
-    if (!file) {
-      this.logger.error('File is missing or undefined');
-      throw new Error('File is missing or undefined');
-    }
-    
-    if (!file.buffer) {
-      this.logger.error('File buffer is missing');
+
+    if (!file || !file.buffer) {
+      this.logger.error('File or file buffer is missing');
       throw new Error('File buffer is missing');
     }
-    
-    this.logger.log(`File details: ${file.originalname}, size: ${file.size}, mimetype: ${file.mimetype}`);
-    
-    return new Promise((resolve, reject) => {
-      // Use try-catch to catch any configuration errors
-      try {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder,
-            resource_type: 'auto',
-          },
-          (error, result) => {
-            if (error) {
-              this.logger.error(`Error uploading to Cloudinary: ${error.message}`);
-              return reject(error);
-            }
-            
-            this.logger.log(`Successfully uploaded file. URL: ${result.secure_url}`);
-            
-            resolve({
-              url: result.secure_url,
-              public_id: result.public_id,
-            });
-          },
-        );
 
-        uploadStream.end(file.buffer);
-      } catch (error) {
-        this.logger.error(`Error in Cloudinary upload stream: ${error.message}`);
-        reject(error);
-      }
+    this.logger.log(`Attempting to upload file ${file.originalname} to folder ${folder}`);
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          resource_type: 'auto',
+        },
+        (error, result) => {
+          if (error) {
+            this.logger.error('Upload failed:', error);
+            reject(error);
+            return;
+          }
+          this.logger.log(`File uploaded successfully. URL: ${result.secure_url}`);
+          resolve({ url: result.secure_url });
+        }
+      );
+
+      streamifier.createReadStream(file.buffer).pipe(uploadStream);
     });
   }
 

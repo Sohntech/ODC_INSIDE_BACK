@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Cron } from '@nestjs/schedule';
-import { AbsenceStatus } from '@prisma/client';
+import { AbsenceStatus, LearnerAttendance } from '@prisma/client';
 
 @Injectable()
 export class AttendanceService {
@@ -133,13 +133,33 @@ export class AttendanceService {
     });
   }
 
-  async updateAbsenceStatus(attendanceId: string, status: AbsenceStatus) {
+  async updateAbsenceStatus(
+    attendanceId: string, 
+    status: AbsenceStatus,
+    comment?: string
+  ): Promise<LearnerAttendance> {
+    const attendance = await this.prisma.learnerAttendance.findUnique({
+      where: { id: attendanceId },
+      include: { learner: true }
+    });
+
+    if (!attendance) {
+      throw new NotFoundException('Attendance record not found');
+    }
+
+    if (attendance.status !== AbsenceStatus.PENDING) {
+      throw new BadRequestException('This absence justification has already been processed');
+    }
+
     return this.prisma.learnerAttendance.update({
       where: { id: attendanceId },
-      data: { status },
-      include: {
-        learner: true,
+      data: { 
+        status,
+        justificationComment: comment 
       },
+      include: {
+        learner: true
+      }
     });
   }
 

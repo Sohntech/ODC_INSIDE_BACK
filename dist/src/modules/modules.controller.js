@@ -20,12 +20,15 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const client_1 = require("@prisma/client");
+const create_module_dto_1 = require("./dto/create-module.dto");
+const platform_express_1 = require("@nestjs/platform-express");
+const multer_1 = require("multer");
 let ModulesController = class ModulesController {
     constructor(modulesService) {
         this.modulesService = modulesService;
     }
-    async create(data) {
-        return this.modulesService.create(data);
+    async create(createModuleDto, photoFile) {
+        return this.modulesService.create(createModuleDto, photoFile);
     }
     async findAll() {
         return this.modulesService.findAll();
@@ -56,11 +59,29 @@ exports.ModulesController = ModulesController;
 __decorate([
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.COACH),
-    (0, swagger_1.ApiOperation)({ summary: 'Créer un nouveau module' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.CREATED, description: 'Module créé' }),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('photoFile', {
+        storage: (0, multer_1.memoryStorage)(),
+        fileFilter: (req, file, cb) => {
+            if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif)$/)) {
+                return cb(new Error('Only image files are allowed!'), false);
+            }
+            cb(null, true);
+        },
+        limits: {
+            fileSize: 5 * 1024 * 1024,
+        }
+    })),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a new module' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.CREATED,
+        description: 'Module created successfully',
+        type: create_module_dto_1.CreateModuleDto
+    }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [create_module_dto_1.CreateModuleDto, Object]),
     __metadata("design:returntype", Promise)
 ], ModulesController.prototype, "create", null);
 __decorate([

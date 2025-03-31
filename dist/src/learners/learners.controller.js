@@ -21,12 +21,13 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const client_1 = require("@prisma/client");
+const update_status_dto_1 = require("./dto/update-status.dto");
 let LearnersController = class LearnersController {
     constructor(learnersService) {
         this.learnersService = learnersService;
     }
     async create(data, photoFile) {
-        return this.learnersService.create({ ...data, photoFile });
+        return this.learnersService.create(data, photoFile);
     }
     async findAll() {
         return this.learnersService.findAll();
@@ -48,6 +49,18 @@ let LearnersController = class LearnersController {
     }
     async getAttendanceStats(id) {
         return this.learnersService.getAttendanceStats(id);
+    }
+    async patchUpdateStatus(id, updateStatusDto) {
+        return this.learnersService.updateLearnerStatus(id, updateStatusDto);
+    }
+    async replaceLearner(replacementDto) {
+        return this.learnersService.replaceLearner(replacementDto);
+    }
+    async getWaitingList(promotionId) {
+        return this.learnersService.getWaitingList(promotionId);
+    }
+    async getStatusHistory(id) {
+        return this.learnersService.getStatusHistory(id);
     }
 };
 exports.LearnersController = LearnersController;
@@ -131,6 +144,41 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], LearnersController.prototype, "getAttendanceStats", null);
+__decorate([
+    (0, common_1.Patch)(':id/status'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_status_dto_1.UpdateStatusDto]),
+    __metadata("design:returntype", Promise)
+], LearnersController.prototype, "patchUpdateStatus", null);
+__decorate([
+    (0, common_1.Post)('replace'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [update_status_dto_1.ReplaceLearnerDto]),
+    __metadata("design:returntype", Promise)
+], LearnersController.prototype, "replaceLearner", null);
+__decorate([
+    (0, common_1.Get)('waiting-list'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Query)('promotionId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], LearnersController.prototype, "getWaitingList", null);
+__decorate([
+    (0, common_1.Get)(':id/status-history'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], LearnersController.prototype, "getStatusHistory", null);
 exports.LearnersController = LearnersController = __decorate([
     (0, swagger_1.ApiTags)('learners'),
     (0, common_1.Controller)('learners'),

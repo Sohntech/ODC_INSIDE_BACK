@@ -6,7 +6,6 @@ export declare class CloudinaryService {
     constructor(configService: ConfigService);
     uploadFile(file: Express.Multer.File, folder: string): Promise<{
         url: string;
-        public_id: string;
     }>;
     deleteFile(publicId: string): Promise<void>;
 }

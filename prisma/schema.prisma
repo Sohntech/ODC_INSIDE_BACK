@@ -68,36 +68,49 @@ model Restaurateur {
   photoUrl  String?
   userId    String   @unique
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
 }
 
 model Learner {
-  id          String              @id @default(uuid())
-  firstName   String
-  lastName    String
-  address     String?
-  gender      Gender
-  birthDate   DateTime
-  birthPlace  String
-  phone       String
-  photoUrl    String?
-  status      LearnerStatus       @default(ACTIVE)
-  qrCode      String              @unique
-  userId      String              @unique
-  refId       String?
-  promotionId String
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  documents   Document[]
-  grades      Grade[]
-  kit         Kit?
-  promotion   Promotion           @relation(fields: [promotionId], references: [id])
-  referential Referential?        @relation(fields: [refId], references: [id])
-  user        User                @relation(fields: [userId], references: [id])
-  attendances LearnerAttendance[]
-  meals       Meal[]
-  tutor       Tutor?
+  id            String                 @id @default(uuid())
+  firstName     String
+  lastName      String
+  address       String?
+  gender        Gender
+  birthDate     DateTime
+  birthPlace    String
+  phone         String
+  photoUrl      String?
+  status        LearnerStatus          @default(ACTIVE)
+  qrCode        String                 @unique
+  userId        String                 @unique
+  refId         String?
+  promotionId   String
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  documents     Document[]
+  grades        Grade[]
+  promotion     Promotion              @relation(fields: [promotionId], references: [id])
+  referential   Referential?           @relation(fields: [refId], references: [id])
+  user          User                   @relation(fields: [userId], references: [id])
+  statusHistory LearnerStatusHistory[]
+  attendances   LearnerAttendance[]
+  meals         Meal[]
+  tutor         Tutor?
+  kit           Kit?
+}
+
+model LearnerStatusHistory {
+  id             String        @id @default(uuid())
+  learner        Learner       @relation(fields: [learnerId], references: [id])
+  learnerId      String
+  previousStatus LearnerStatus?
+  newStatus      LearnerStatus
+  reason         String?
+  date           DateTime      @default(now())
+
+  @@index([learnerId])
 }
 
 model Tutor {
@@ -109,7 +122,7 @@ model Tutor {
   address   String?
   learnerId String   @unique
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
   learner   Learner  @relation(fields: [learnerId], references: [id])
 }
 
@@ -119,10 +132,10 @@ model Kit {
   charger   Boolean  @default(false)
   bag       Boolean  @default(false)
   polo      Boolean  @default(false)
-  learnerId String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  learner   Learner  @relation(fields: [learnerId], references: [id])
+  learner   Learner? @relation(fields: [learnerId], references: [id])
+  learnerId String?  @unique
 }
 
 model Promotion {
@@ -136,28 +149,28 @@ model Promotion {
   updatedAt    DateTime        @updatedAt
   events       Event[]
   learners     Learner[]
-  referentials Referential[]
+  referentials Referential[] // Many-to-many relationship
 }
 
 model Referential {
-  id          String    @id @default(uuid())
+  id          String     @id @default(uuid())
   name        String
   description String?
   photoUrl    String?
   capacity    Int
-  promotionId String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  coaches     Coach[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   learners    Learner[]
+  coaches     Coach[]
   modules     Module[]
-  promotion   Promotion @relation(fields: [promotionId], references: [id])
+  promotions  Promotion[] // Many-to-many relationship
 }
 
 model Module {
   id          String      @id @default(uuid())
   name        String
   description String?
+  photoUrl    String? // Add this line
   startDate   DateTime
   endDate     DateTime
   coachId     String
@@ -176,7 +189,7 @@ model Grade {
   moduleId  String
   learnerId String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
   learner   Learner  @relation(fields: [learnerId], references: [id])
   module    Module   @relation(fields: [moduleId], references: [id])
 }
@@ -188,6 +201,7 @@ model LearnerAttendance {
   isLate        Boolean       @default(false)
   scanTime      DateTime?
   justification String?
+  justificationComment String?
   status        AbsenceStatus @default(PENDING)
   documentUrl   String?
   learnerId     String
@@ -204,7 +218,7 @@ model CoachAttendance {
   scanTime  DateTime?
   coachId   String
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  updatedAt DateTime  @default(now())
   coach     Coach     @relation(fields: [coachId], references: [id])
 }
 
@@ -214,7 +228,7 @@ model Meal {
   type      String
   learnerId String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
   learner   Learner  @relation(fields: [learnerId], references: [id])
 }
 
@@ -225,7 +239,7 @@ model Document {
   url       String
   learnerId String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
   learner   Learner  @relation(fields: [learnerId], references: [id])
 }
 
@@ -239,7 +253,7 @@ model Event {
   location    String?
   promotionId String
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  updatedAt   DateTime  @default(now())
   promotion   Promotion @relation(fields: [promotionId], references: [id])
 }
 
@@ -258,6 +272,7 @@ enum Gender {
 
 enum LearnerStatus {
   ACTIVE
+  WAITING
   REPLACED
   REPLACEMENT
   ABANDONED

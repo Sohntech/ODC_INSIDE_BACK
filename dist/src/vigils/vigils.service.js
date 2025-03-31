@@ -22,6 +22,11 @@ let VigilsService = VigilsService_1 = class VigilsService {
         this.logger = new common_1.Logger(VigilsService_1.name);
     }
     async create(createVigilDto, photoFile) {
+        this.logger.log('Creating vigil with data:', {
+            firstName: createVigilDto.firstName,
+            lastName: createVigilDto.lastName,
+            email: createVigilDto.email,
+        });
         const existingVigil = await this.prisma.vigil.findFirst({
             where: {
                 OR: [
@@ -35,36 +40,45 @@ let VigilsService = VigilsService_1 = class VigilsService {
         }
         let photoUrl;
         if (photoFile) {
+            this.logger.log('Photo file received, processing...');
             try {
                 const result = await this.cloudinary.uploadFile(photoFile, 'vigils');
                 photoUrl = result.url;
+                this.logger.log('Successfully uploaded to Cloudinary:', photoUrl);
             }
             catch (error) {
-                this.logger.error('Failed to upload photo:', error);
+                this.logger.error('Failed to upload photo to Cloudinary:', error);
             }
         }
         const password = auth_utils_1.AuthUtils.generatePassword();
         const hashedPassword = await auth_utils_1.AuthUtils.hashPassword(password);
-        const vigil = await this.prisma.vigil.create({
-            data: {
-                firstName: createVigilDto.firstName,
-                lastName: createVigilDto.lastName,
-                phone: createVigilDto.phone,
-                photoUrl,
-                user: {
-                    create: {
-                        email: createVigilDto.email,
-                        password: hashedPassword,
-                        role: 'VIGIL',
+        try {
+            const vigil = await this.prisma.vigil.create({
+                data: {
+                    firstName: createVigilDto.firstName,
+                    lastName: createVigilDto.lastName,
+                    phone: createVigilDto.phone,
+                    photoUrl,
+                    user: {
+                        create: {
+                            email: createVigilDto.email,
+                            password: hashedPassword,
+                            role: 'VIGIL',
+                        },
                     },
                 },
-            },
-            include: {
-                user: true,
-            },
-        });
-        await auth_utils_1.AuthUtils.sendPasswordEmail(createVigilDto.email, password, 'Vigil');
-        return vigil;
+                include: {
+                    user: true,
+                },
+            });
+            await auth_utils_1.AuthUtils.sendPasswordEmail(createVigilDto.email, password, 'Vigil');
+            this.logger.log('Vigil created successfully:', vigil.id);
+            return vigil;
+        }
+        catch (error) {
+            this.logger.error('Failed to create vigil:', error);
+            throw error;
+        }
     }
     async findAll() {
         return this.prisma.vigil.findMany({

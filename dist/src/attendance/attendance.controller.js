@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var AttendanceController_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceController = void 0;
 const common_1 = require("@nestjs/common");
@@ -21,9 +22,13 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const client_1 = require("@prisma/client");
-let AttendanceController = class AttendanceController {
-    constructor(attendanceService) {
+const cloudinary_service_1 = require("../cloudinary/cloudinary.service");
+const update_absence_status_dto_1 = require("./dto/update-absence-status.dto");
+let AttendanceController = AttendanceController_1 = class AttendanceController {
+    constructor(attendanceService, cloudinaryService) {
         this.attendanceService = attendanceService;
+        this.cloudinaryService = cloudinaryService;
+        this.logger = new common_1.Logger(AttendanceController_1.name);
     }
     async scanLearner(id) {
         return this.attendanceService.scanLearner(id);
@@ -34,11 +39,19 @@ let AttendanceController = class AttendanceController {
     async submitJustification(id, justification, document) {
         let documentUrl;
         if (document) {
+            try {
+                const uploadResult = await this.cloudinaryService.uploadFile(document, 'justifications');
+                documentUrl = uploadResult.url;
+            }
+            catch (error) {
+                this.logger.error(`Failed to upload justification document: ${error.message}`);
+                throw new common_1.InternalServerErrorException('Failed to upload document');
+            }
         }
         return this.attendanceService.submitAbsenceJustification(id, justification, documentUrl);
     }
-    async updateAbsenceStatus(id, status) {
-        return this.attendanceService.updateAbsenceStatus(id, status);
+    async updateAbsenceStatus(id, updateDto) {
+        return this.attendanceService.updateAbsenceStatus(id, updateDto.status, updateDto.comment);
     }
     async getLatestScans() {
         return this.attendanceService.getLatestScans();
@@ -79,11 +92,12 @@ __decorate([
 __decorate([
     (0, common_1.Put)('absence/:id/status'),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.COACH),
-    (0, swagger_1.ApiOperation)({ summary: 'Mettre à jour le statut d\'une absence' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Update absence justification status' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: 'Attendance ID' }),
     __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)('status')),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, update_absence_status_dto_1.UpdateAbsenceStatusDto]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "updateAbsenceStatus", null);
 __decorate([
@@ -94,11 +108,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "getLatestScans", null);
-exports.AttendanceController = AttendanceController = __decorate([
+exports.AttendanceController = AttendanceController = AttendanceController_1 = __decorate([
     (0, swagger_1.ApiTags)('attendance'),
     (0, common_1.Controller)('attendance'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, swagger_1.ApiBearerAuth)(),
-    __metadata("design:paramtypes", [attendance_service_1.AttendanceService])
+    __metadata("design:paramtypes", [attendance_service_1.AttendanceService,
+        cloudinary_service_1.CloudinaryService])
 ], AttendanceController);
 //# sourceMappingURL=attendance.controller.js.map

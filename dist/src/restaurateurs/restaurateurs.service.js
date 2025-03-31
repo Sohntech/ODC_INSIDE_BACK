@@ -15,6 +15,7 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const cloudinary_service_1 = require("../cloudinary/cloudinary.service");
 const auth_utils_1 = require("../utils/auth.utils");
+const fs = require("fs");
 let RestaurateursService = RestaurateursService_1 = class RestaurateursService {
     constructor(prisma, cloudinary) {
         this.prisma = prisma;
@@ -22,6 +23,11 @@ let RestaurateursService = RestaurateursService_1 = class RestaurateursService {
         this.logger = new common_1.Logger(RestaurateursService_1.name);
     }
     async create(createRestaurateurDto, photoFile) {
+        this.logger.log('Creating restaurateur with data:', {
+            firstName: createRestaurateurDto.firstName,
+            lastName: createRestaurateurDto.lastName,
+            email: createRestaurateurDto.email
+        });
         const existingRestaurateur = await this.prisma.restaurateur.findFirst({
             where: {
                 OR: [
@@ -35,36 +41,62 @@ let RestaurateursService = RestaurateursService_1 = class RestaurateursService {
         }
         let photoUrl;
         if (photoFile) {
+            this.logger.log('Photo file received, processing...');
             try {
+                this.logger.log('Attempting to upload to Cloudinary...');
                 const result = await this.cloudinary.uploadFile(photoFile, 'restaurateurs');
                 photoUrl = result.url;
+                this.logger.log('Successfully uploaded to Cloudinary:', photoUrl);
             }
-            catch (error) {
-                this.logger.error('Failed to upload photo:', error);
+            catch (cloudinaryError) {
+                this.logger.error('Cloudinary upload failed:', cloudinaryError);
+                try {
+                    this.logger.log('Falling back to local storage...');
+                    if (!fs.existsSync('./uploads/restaurateurs')) {
+                        fs.mkdirSync('./uploads/restaurateurs', { recursive: true });
+                    }
+                    const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+                    const extension = photoFile.originalname.split('.').pop();
+                    const filename = `${uniquePrefix}.${extension}`;
+                    const filepath = `./uploads/restaurateurs/${filename}`;
+                    fs.writeFileSync(filepath, photoFile.buffer);
+                    photoUrl = `uploads/restaurateurs/${filename}`;
+                    this.logger.log(`File saved locally at ${filepath}`);
+                }
+                catch (localError) {
+                    this.logger.error('Local storage fallback failed:', localError);
+                }
             }
         }
         const password = auth_utils_1.AuthUtils.generatePassword();
         const hashedPassword = await auth_utils_1.AuthUtils.hashPassword(password);
-        const restaurateur = await this.prisma.restaurateur.create({
-            data: {
-                firstName: createRestaurateurDto.firstName,
-                lastName: createRestaurateurDto.lastName,
-                phone: createRestaurateurDto.phone,
-                photoUrl,
-                user: {
-                    create: {
-                        email: createRestaurateurDto.email,
-                        password: hashedPassword,
-                        role: 'RESTAURATEUR',
+        try {
+            const restaurateur = await this.prisma.restaurateur.create({
+                data: {
+                    firstName: createRestaurateurDto.firstName,
+                    lastName: createRestaurateurDto.lastName,
+                    phone: createRestaurateurDto.phone,
+                    photoUrl,
+                    user: {
+                        create: {
+                            email: createRestaurateurDto.email,
+                            password: hashedPassword,
+                            role: 'RESTAURATEUR',
+                        },
                     },
                 },
-            },
-            include: {
-                user: true,
-            },
-        });
-        await auth_utils_1.AuthUtils.sendPasswordEmail(createRestaurateurDto.email, password, 'Restaurateur');
-        return restaurateur;
+                include: {
+                    user: true,
+                },
+            });
+            await auth_utils_1.AuthUtils.sendPasswordEmail(createRestaurateurDto.email, password, 'Restaurateur');
+            this.logger.log('Restaurateur created successfully:', restaurateur.id);
+            return restaurateur;
+        }
+        catch (error) {
+            this.logger.error('Failed to create restaurateur:', error);
+            throw error;
+        }
     }
     async findAll() {
         return this.prisma.restaurateur.findMany({

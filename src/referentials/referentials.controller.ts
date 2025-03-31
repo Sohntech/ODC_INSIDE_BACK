@@ -21,13 +21,12 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
-// Define a DTO for referential creation to ensure proper validation
+// Update the CreateReferentialDto
 interface CreateReferentialDto {
   name: string;
   description?: string;
   photoUrl?: string;
   capacity: number;
-  promotionId: string;
 }
 
 @ApiTags('referentials')
@@ -44,54 +43,52 @@ export class ReferentialsController {
 
   @Post()
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Créer un nouveau référentiel' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Référentiel créé' })
+  @ApiOperation({ summary: 'Create a new referential' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Referential created' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('photoUrl'))
   async create(
     @Body() formData: any,
     @UploadedFile() photoFile?: Express.Multer.File,
   ) {
-    this.logger.log(`Received form data: ${JSON.stringify(formData)}`);
-    
-    // Extract and validate required fields
-    const name = formData.name;
-    const capacity = parseInt(formData.capacity, 10);
-    const promotionId = formData.promotionId;
-    const description = formData.description;
-    
-    // Validate required fields
+    const { name, capacity, description } = formData;
+
     if (!name) {
-      throw new BadRequestException('Le champ "name" est requis');
+      throw new BadRequestException('Name is required');
     }
     if (isNaN(capacity)) {
-      throw new BadRequestException('Le champ "capacity" est requis et doit être un nombre');
+      throw new BadRequestException('Capacity must be a number');
     }
-    if (!promotionId) {
-      throw new BadRequestException('Le champ "promotionId" est requis');
-    }
-    
-    // Prepare data for service
+
     const createData: CreateReferentialDto = {
       name,
       description,
-      capacity,
-      promotionId,
+      capacity: parseInt(capacity, 10),
     };
-    
-    // Handle photo upload if provided
+
     if (photoFile) {
       try {
         const uploadResult = await this.cloudinaryService.uploadFile(photoFile, 'referentials');
         createData.photoUrl = uploadResult.url;
       } catch (error) {
         this.logger.error(`Error uploading photo: ${error.message}`);
-        // Continue without photo if upload fails
       }
     }
-    
+
     this.logger.log(`Creating referential with data: ${JSON.stringify(createData)}`);
     return this.referentialsService.create(createData);
+  }
+
+  @Post('assign-to-promotion')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Assign referentials to a promotion' })
+  async assignToPromotion(
+    @Body() data: { referentialIds: string[]; promotionId: string }
+  ) {
+    return this.referentialsService.assignToPromotion(
+      data.referentialIds,
+      data.promotionId
+    );
   }
 
   @Get()
@@ -120,7 +117,7 @@ export class ReferentialsController {
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('Aucune donnée fournie pour la mise à jour');
     }
-    
+
     return this.referentialsService.update(id, data);
   }
 }

@@ -7,13 +7,18 @@ import {
   Param,
   UseGuards,
   HttpStatus,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { ModulesService } from './modules.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { CreateModuleDto } from './dto/create-module.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 
 @ApiTags('modules')
 @Controller('modules')
@@ -24,10 +29,30 @@ export class ModulesController {
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.COACH)
-  @ApiOperation({ summary: 'Créer un nouveau module' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Module créé' })
-  async create(@Body() data: any) {
-    return this.modulesService.create(data);
+  @UseInterceptors(FileInterceptor('photoFile', {
+    storage: memoryStorage(),
+    fileFilter: (req, file, cb) => {
+      if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif)$/)) {
+        return cb(new Error('Only image files are allowed!'), false);
+      }
+      cb(null, true);
+    },
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+    }
+  }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Create a new module' })
+  @ApiResponse({ 
+    status: HttpStatus.CREATED, 
+    description: 'Module created successfully',
+    type: CreateModuleDto
+  })
+  async create(
+    @Body() createModuleDto: CreateModuleDto,
+    @UploadedFile() photoFile?: Express.Multer.File,
+  ) {
+    return this.modulesService.create(createModuleDto, photoFile);
   }
 
   @Get()

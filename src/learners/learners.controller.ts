@@ -9,6 +9,8 @@ import {
   UseInterceptors,
   UploadedFile,
   HttpStatus,
+  Patch,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
@@ -17,6 +19,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole, LearnerStatus } from '@prisma/client';
+import { ReplaceLearnerDto, UpdateStatusDto } from './dto/update-status.dto';
 
 @ApiTags('learners')
 @Controller('learners')
@@ -32,7 +35,7 @@ export class LearnersController {
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Apprenant créé' })
   @ApiConsumes('multipart/form-data')
   async create(@Body() data: any, @UploadedFile() photoFile?: Express.Multer.File) {
-    return this.learnersService.create({ ...data, photoFile });
+    return this.learnersService.create(data, photoFile);
   }
 
   @Get()
@@ -90,4 +93,35 @@ export class LearnersController {
   async getAttendanceStats(@Param('id') id: string) {
     return this.learnersService.getAttendanceStats(id);
   }
+
+  // ...existing code...
+
+@Patch(':id/status')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+async patchUpdateStatus(
+  @Param('id') id: string,
+  @Body() updateStatusDto: UpdateStatusDto
+) {
+  return this.learnersService.updateLearnerStatus(id, updateStatusDto);
+}
+
+@Post('replace')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+async replaceLearner(@Body() replacementDto: ReplaceLearnerDto) {
+  return this.learnersService.replaceLearner(replacementDto);
+}
+
+@Get('waiting-list')
+@UseGuards(JwtAuthGuard)
+async getWaitingList(@Query('promotionId') promotionId?: string) {
+  return this.learnersService.getWaitingList(promotionId);
+}
+
+@Get(':id/status-history')
+@UseGuards(JwtAuthGuard)
+async getStatusHistory(@Param('id') id: string) {
+  return this.learnersService.getStatusHistory(id);
+}
 }

@@ -5,7 +5,6 @@ interface CreateReferentialDto {
     description?: string;
     photoUrl?: string;
     capacity: number;
-    promotionId: string;
 }
 export declare class ReferentialsController {
     private readonly referentialsService;
@@ -13,34 +12,54 @@ export declare class ReferentialsController {
     private readonly logger;
     constructor(referentialsService: ReferentialsService, cloudinaryService: CloudinaryService);
     create(formData: any, photoFile?: Express.Multer.File): Promise<{
-        name: string;
         id: string;
-        description: string | null;
-        photoUrl: string | null;
-        capacity: number;
-        promotionId: string;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        photoUrl: string | null;
+        description: string | null;
+        capacity: number;
+    }>;
+    assignToPromotion(data: {
+        referentialIds: string[];
+        promotionId: string;
+    }): Promise<{
+        referentials: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            photoUrl: string | null;
+            description: string | null;
+            capacity: number;
+        }[];
+    } & {
+        id: string;
+        status: import(".prisma/client").$Enums.PromotionStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        photoUrl: string | null;
+        startDate: Date;
+        endDate: Date;
     }>;
     findAll(): Promise<{
-        name: string;
         id: string;
-        description: string | null;
-        photoUrl: string | null;
-        capacity: number;
-        promotionId: string;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        photoUrl: string | null;
+        description: string | null;
+        capacity: number;
     }[]>;
     findOne(id: string): Promise<{
-        name: string;
         id: string;
-        description: string | null;
-        photoUrl: string | null;
-        capacity: number;
-        promotionId: string;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        photoUrl: string | null;
+        description: string | null;
+        capacity: number;
     }>;
     getStatistics(id: string): Promise<{
         totalLearners: number;
@@ -50,14 +69,13 @@ export declare class ReferentialsController {
         availableSpots: number;
     }>;
     update(id: string, data: Partial<CreateReferentialDto>): Promise<{
-        name: string;
         id: string;
-        description: string | null;
-        photoUrl: string | null;
-        capacity: number;
-        promotionId: string;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        photoUrl: string | null;
+        description: string | null;
+        capacity: number;
     }>;
 }
 export {};

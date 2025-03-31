@@ -1,10 +1,24 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Body, 
+  Patch, 
+  Param, 
+  Delete, 
+  UseInterceptors, 
+  UploadedFile, 
+  UseGuards,
+  ParseFilePipeBuilder,
+  HttpStatus 
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { VigilsService } from './vigils.service';
 import { CreateVigilDto } from './dto/create-vigil.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 
 @Controller('vigils')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -14,7 +28,35 @@ export class VigilsController {
   @Post()
   @Roles('ADMIN')
   @UseInterceptors(FileInterceptor('photo'))
-  create(@Body() createVigilDto: CreateVigilDto, @UploadedFile() photo?: Express.Multer.File) {
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        firstName: { type: 'string' },
+        lastName: { type: 'string' },
+        phone: { type: 'string' },
+        email: { type: 'string' },
+        photo: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  async create(
+    @Body() createVigilDto: CreateVigilDto,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /(jpg|jpeg|png)$/,
+        })
+        .build({
+          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+          fileIsRequired: false,
+        }),
+    ) photo?: Express.Multer.File,
+  ) {
     return this.vigilsService.create(createVigilDto, photo);
   }
 

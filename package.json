@@ -44,7 +44,8 @@
     "qrcode": "^1.5.3",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^5.0.5",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "streamifier": "^0.1.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -59,6 +60,7 @@
     "@types/passport-jwt": "^3.0.10",
     "@types/passport-local": "^1.0.36",
     "@types/qrcode": "^1.5.2",
+    "@types/streamifier": "^0.1.2",
     "@types/supertest": "^2.0.12",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",

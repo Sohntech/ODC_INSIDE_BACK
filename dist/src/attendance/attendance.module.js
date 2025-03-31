@@ -10,13 +10,17 @@ exports.AttendanceModule = void 0;
 const common_1 = require("@nestjs/common");
 const attendance_service_1 = require("./attendance.service");
 const attendance_controller_1 = require("./attendance.controller");
+const cloudinary_module_1 = require("../cloudinary/cloudinary.module");
 const schedule_1 = require("@nestjs/schedule");
 let AttendanceModule = class AttendanceModule {
 };
 exports.AttendanceModule = AttendanceModule;
 exports.AttendanceModule = AttendanceModule = __decorate([
     (0, common_1.Module)({
-        imports: [schedule_1.ScheduleModule.forRoot()],
+        imports: [
+            schedule_1.ScheduleModule.forRoot(),
+            cloudinary_module_1.CloudinaryModule
+        ],
         providers: [attendance_service_1.AttendanceService],
         controllers: [attendance_controller_1.AttendanceController],
         exports: [attendance_service_1.AttendanceService],

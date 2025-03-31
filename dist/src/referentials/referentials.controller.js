@@ -30,25 +30,17 @@ let ReferentialsController = ReferentialsController_1 = class ReferentialsContro
         this.logger = new common_1.Logger(ReferentialsController_1.name);
     }
     async create(formData, photoFile) {
-        this.logger.log(`Received form data: ${JSON.stringify(formData)}`);
-        const name = formData.name;
-        const capacity = parseInt(formData.capacity, 10);
-        const promotionId = formData.promotionId;
-        const description = formData.description;
+        const { name, capacity, description } = formData;
         if (!name) {
-            throw new common_1.BadRequestException('Le champ "name" est requis');
+            throw new common_1.BadRequestException('Name is required');
         }
         if (isNaN(capacity)) {
-            throw new common_1.BadRequestException('Le champ "capacity" est requis et doit être un nombre');
-        }
-        if (!promotionId) {
-            throw new common_1.BadRequestException('Le champ "promotionId" est requis');
+            throw new common_1.BadRequestException('Capacity must be a number');
         }
         const createData = {
             name,
             description,
-            capacity,
-            promotionId,
+            capacity: parseInt(capacity, 10),
         };
         if (photoFile) {
             try {
@@ -61,6 +53,9 @@ let ReferentialsController = ReferentialsController_1 = class ReferentialsContro
         }
         this.logger.log(`Creating referential with data: ${JSON.stringify(createData)}`);
         return this.referentialsService.create(createData);
+    }
+    async assignToPromotion(data) {
+        return this.referentialsService.assignToPromotion(data.referentialIds, data.promotionId);
     }
     async findAll() {
         return this.referentialsService.findAll();
@@ -82,8 +77,8 @@ exports.ReferentialsController = ReferentialsController;
 __decorate([
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN),
-    (0, swagger_1.ApiOperation)({ summary: 'Créer un nouveau référentiel' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.CREATED, description: 'Référentiel créé' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a new referential' }),
+    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.CREATED, description: 'Referential created' }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('photoUrl')),
     __param(0, (0, common_1.Body)()),
@@ -92,6 +87,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], ReferentialsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Post)('assign-to-promotion'),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Assign referentials to a promotion' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ReferentialsController.prototype, "assignToPromotion", null);
 __decorate([
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'Récupérer tous les référentiels' }),

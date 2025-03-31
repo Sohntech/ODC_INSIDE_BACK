@@ -22,53 +22,14 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const client_1 = require("@prisma/client");
-const multer_1 = require("multer");
+const create_promotion_dto_1 = require("./dto/create-promotion.dto");
 let PromotionsController = PromotionsController_1 = class PromotionsController {
     constructor(promotionsService) {
         this.promotionsService = promotionsService;
         this.logger = new common_1.Logger(PromotionsController_1.name);
     }
-    async create(formData, photoFile) {
-        this.logger.log('Form data received:', formData);
-        if (photoFile) {
-            this.logger.log('Photo file received:', {
-                originalname: photoFile.originalname,
-                mimetype: photoFile.mimetype,
-                size: photoFile.size,
-                buffer: photoFile.buffer ? `Buffer size: ${photoFile.buffer.length} bytes` : 'No buffer',
-            });
-        }
-        else {
-            this.logger.log('No photo file received');
-        }
-        try {
-            let name = formData.name;
-            let startDate = formData.startDate;
-            let endDate = formData.endDate;
-            if (typeof name === 'string' && name.startsWith('"') && name.endsWith('"')) {
-                name = name.substring(1, name.length - 1);
-            }
-            if (typeof startDate === 'string' && startDate.startsWith('"') && startDate.endsWith('"')) {
-                startDate = startDate.substring(1, startDate.length - 1);
-            }
-            if (typeof endDate === 'string' && endDate.startsWith('"') && endDate.endsWith('"')) {
-                endDate = endDate.substring(1, endDate.length - 1);
-            }
-            const createData = {
-                name,
-                startDate: new Date(startDate),
-                endDate: new Date(endDate),
-            };
-            if (isNaN(createData.startDate.getTime()) || isNaN(createData.endDate.getTime())) {
-                throw new common_1.BadRequestException('Invalid date format. Use ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)');
-            }
-            this.logger.log('Processed data:', createData);
-            return this.promotionsService.create(createData, photoFile);
-        }
-        catch (error) {
-            this.logger.error('Error creating promotion:', error);
-            throw error;
-        }
+    async create(createPromotionDto, photoFile) {
+        return this.promotionsService.create(createPromotionDto, photoFile);
     }
     async findAll() {
         return this.promotionsService.findAll();
@@ -89,32 +50,11 @@ let PromotionsController = PromotionsController_1 = class PromotionsController {
 exports.PromotionsController = PromotionsController;
 __decorate([
     (0, common_1.Post)(),
-    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('photoFile', {
-        storage: (0, multer_1.memoryStorage)(),
-    })),
-    (0, swagger_1.ApiOperation)({ summary: 'Créer une nouvelle promotion' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.CREATED, description: 'Promotion créée' }),
-    (0, swagger_1.ApiConsumes)('multipart/form-data'),
-    (0, swagger_1.ApiBody)({
-        schema: {
-            type: 'object',
-            properties: {
-                name: { type: 'string' },
-                startDate: { type: 'string', format: 'date-time' },
-                endDate: { type: 'string', format: 'date-time' },
-                photoFile: {
-                    type: 'string',
-                    format: 'binary'
-                },
-            },
-            required: ['name', 'startDate', 'endDate'],
-        },
-    }),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('photoFile')),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [create_promotion_dto_1.CreatePromotionDto, Object]),
     __metadata("design:returntype", Promise)
 ], PromotionsController.prototype, "create", null);
 __decorate([

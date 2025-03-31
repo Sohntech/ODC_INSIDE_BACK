@@ -1,45 +1,46 @@
 import { PromotionsService } from './promotions.service';
+import { CreatePromotionDto } from './dto/create-promotion.dto';
 export declare class PromotionsController {
     private readonly promotionsService;
     private readonly logger;
     constructor(promotionsService: PromotionsService);
-    create(formData: any, photoFile?: Express.Multer.File): Promise<{
+    create(createPromotionDto: CreatePromotionDto, photoFile?: Express.Multer.File): Promise<{
         id: string;
-        photoUrl: string | null;
         status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
         name: string;
+        photoUrl: string | null;
         startDate: Date;
         endDate: Date;
     }>;
     findAll(): Promise<{
         id: string;
-        photoUrl: string | null;
         status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
         name: string;
+        photoUrl: string | null;
         startDate: Date;
         endDate: Date;
     }[]>;
     getActivePromotion(): Promise<{
         id: string;
-        photoUrl: string | null;
         status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
         name: string;
+        photoUrl: string | null;
         startDate: Date;
         endDate: Date;
     }>;
     findOne(id: string): Promise<{
         id: string;
-        photoUrl: string | null;
         status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
         name: string;
+        photoUrl: string | null;
         startDate: Date;
         endDate: Date;
     }>;
@@ -51,11 +52,11 @@ export declare class PromotionsController {
     }>;
     update(id: string, data: any): Promise<{
         id: string;
-        photoUrl: string | null;
         status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
         name: string;
+        photoUrl: string | null;
         startDate: Date;
         endDate: Date;
     }>;

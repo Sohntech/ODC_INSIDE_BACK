@@ -18,55 +18,55 @@ export declare class MealsService {
     getLearnerMealHistory(learnerId: string): Promise<({
         learner: {
             id: string;
+            status: import(".prisma/client").$Enums.LearnerStatus;
             createdAt: Date;
             updatedAt: Date;
             firstName: string;
             lastName: string;
-            phone: string;
-            userId: string;
             address: string | null;
             gender: import(".prisma/client").$Enums.Gender;
             birthDate: Date;
             birthPlace: string;
+            phone: string;
             photoUrl: string | null;
-            status: import(".prisma/client").$Enums.LearnerStatus;
             qrCode: string;
+            userId: string;
             refId: string | null;
             promotionId: string;
         };
     } & {
         id: string;
+        date: Date;
+        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        learnerId: string;
-        date: Date;
     })[]>;
     getLatestScans(): Promise<({
         learner: {
             id: string;
+            status: import(".prisma/client").$Enums.LearnerStatus;
             createdAt: Date;
             updatedAt: Date;
             firstName: string;
             lastName: string;
-            phone: string;
-            userId: string;
             address: string | null;
             gender: import(".prisma/client").$Enums.Gender;
             birthDate: Date;
             birthPlace: string;
+            phone: string;
             photoUrl: string | null;
-            status: import(".prisma/client").$Enums.LearnerStatus;
             qrCode: string;
+            userId: string;
             refId: string | null;
             promotionId: string;
         };
     } & {
         id: string;
+        date: Date;
+        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        learnerId: string;
-        date: Date;
     })[]>;
 }

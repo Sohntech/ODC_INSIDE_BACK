@@ -15,7 +15,6 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const cloudinary_service_1 = require("../cloudinary/cloudinary.service");
 const client_1 = require("@prisma/client");
-const fs = require("fs");
 let PromotionsService = PromotionsService_1 = class PromotionsService {
     constructor(prisma, cloudinary) {
         this.prisma = prisma;
@@ -23,73 +22,62 @@ let PromotionsService = PromotionsService_1 = class PromotionsService {
         this.logger = new common_1.Logger(PromotionsService_1.name);
     }
     async create(data, photoFile) {
-        this.logger.log('Creating promotion with data:', data);
-        if (photoFile) {
-            this.logger.log('Photo file received:', {
-                filename: photoFile.originalname,
-                size: photoFile.size,
-                mimetype: photoFile.mimetype
-            });
-        }
-        const activePromotion = await this.prisma.promotion.findFirst({
-            where: {
-                status: client_1.PromotionStatus.ACTIVE
-            },
-        });
-        if (activePromotion) {
-            throw new common_1.ConflictException('Une promotion active existe déjà');
-        }
-        if (!photoFile || !photoFile.buffer) {
-            this.logger.log('No photo file or buffer, skipping photo upload');
-            const createData = {
-                name: data.name,
-                startDate: data.startDate,
-                endDate: data.endDate,
-                photoUrl: null,
-                status: client_1.PromotionStatus.ACTIVE,
-            };
-            this.logger.log('Creating promotion without photo:', createData);
-            return this.prisma.promotion.create({
-                data: createData,
-            });
-        }
-        let photoUrl = null;
         try {
-            this.logger.log('Attempting to upload to Cloudinary...');
-            const result = await this.cloudinary.uploadFile(photoFile, 'promotions');
-            photoUrl = result.url;
-            this.logger.log('Successfully uploaded to Cloudinary:', photoUrl);
-        }
-        catch (cloudinaryError) {
-            this.logger.error('Cloudinary upload failed:', cloudinaryError);
-            try {
-                this.logger.log('Falling back to local storage...');
-                if (!fs.existsSync('./uploads')) {
-                    fs.mkdirSync('./uploads', { recursive: true });
+            let processedReferentialIds = [];
+            if (data.referentialIds) {
+                try {
+                    processedReferentialIds = typeof data.referentialIds === 'string'
+                        ? JSON.parse(data.referentialIds.replace(/\s/g, ''))
+                        : data.referentialIds;
                 }
-                const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-                const extension = photoFile.originalname.split('.').pop();
-                const filename = `${uniquePrefix}.${extension}`;
-                const filepath = `./uploads/${filename}`;
-                fs.writeFileSync(filepath, photoFile.buffer);
-                photoUrl = `uploads/${filename}`;
-                this.logger.log(`File saved locally at ${filepath}`);
+                catch (e) {
+                    this.logger.error(`Error parsing referentialIds: ${e.message}`);
+                    throw new common_1.ConflictException('Invalid referentialIds format');
+                }
             }
-            catch (localError) {
-                this.logger.error('Local storage fallback failed:', localError);
+            this.logger.debug(`Processed referentialIds: ${JSON.stringify(processedReferentialIds)}`);
+            let photoUrl = data.photoUrl;
+            if (photoFile) {
+                const uploadResult = await this.cloudinary.uploadFile(photoFile, 'promotions');
+                photoUrl = uploadResult.url;
             }
+            return await this.prisma.$transaction(async (prisma) => {
+                if (processedReferentialIds.length > 0) {
+                    const existingReferentials = await prisma.referential.findMany({
+                        where: { id: { in: processedReferentialIds } },
+                        select: { id: true, name: true }
+                    });
+                    this.logger.debug(`Found referentials: ${JSON.stringify(existingReferentials)}`);
+                    if (existingReferentials.length !== processedReferentialIds.length) {
+                        const foundIds = existingReferentials.map(ref => ref.id);
+                        const missingIds = processedReferentialIds.filter(id => !foundIds.includes(id));
+                        throw new common_1.NotFoundException(`Referentials not found: ${missingIds.join(', ')}`);
+                    }
+                }
+                const createData = {
+                    name: data.name,
+                    startDate: new Date(data.startDate),
+                    endDate: new Date(data.endDate),
+                    photoUrl,
+                    status: client_1.PromotionStatus.ACTIVE,
+                    referentials: processedReferentialIds.length > 0 ? {
+                        connect: processedReferentialIds.map(id => ({ id }))
+                    } : undefined
+                };
+                this.logger.log('Creating promotion with data:', JSON.stringify(createData, null, 2));
+                return prisma.promotion.create({
+                    data: createData,
+                    include: {
+                        referentials: true,
+                        learners: true
+                    }
+                });
+            });
         }
-        const createData = {
-            name: data.name,
-            startDate: data.startDate,
-            endDate: data.endDate,
-            photoUrl,
-            status: client_1.PromotionStatus.ACTIVE,
-        };
-        this.logger.log('Creating promotion with final data:', createData);
-        return this.prisma.promotion.create({
-            data: createData,
-        });
+        catch (error) {
+            this.logger.error(`Creation failed: ${error.message}`);
+            throw error;
+        }
     }
     async findAll() {
         return this.prisma.promotion.findMany({
@@ -103,13 +91,13 @@ let PromotionsService = PromotionsService_1 = class PromotionsService {
         const promotion = await this.prisma.promotion.findUnique({
             where: { id },
             include: {
-                learners: true,
                 referentials: true,
+                learners: true,
                 events: true,
-            },
+            }
         });
         if (!promotion) {
-            throw new common_1.NotFoundException('Promotion non trouvée');
+            throw new common_1.NotFoundException(`Promotion with ID ${id} not found`);
         }
         return promotion;
     }
@@ -160,7 +148,7 @@ let PromotionsService = PromotionsService_1 = class PromotionsService {
         const activeModules = await this.prisma.module.count({
             where: {
                 referential: {
-                    promotionId: id,
+                    promotions: { some: { id } },
                 },
                 endDate: {
                     gte: new Date(),

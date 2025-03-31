@@ -1,21 +1,49 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Module } from '@prisma/client';
+import { CreateModuleDto } from './dto/create-module.dto';
 
 @Injectable()
 export class ModulesService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(ModulesService.name);
 
-  async create(data: {
-    name: string;
-    description?: string;
-    startDate: Date;
-    endDate: Date;
-    coachId: string;
-    refId: string;
-  }): Promise<Module> {
+  constructor(
+    private prisma: PrismaService,
+    private cloudinary: CloudinaryService,
+  ) {}
+
+  async create(data: CreateModuleDto, photoFile?: Express.Multer.File): Promise<Module> {
+    this.logger.log('Creating module with data:', { ...data, hasPhoto: !!photoFile });
+
+    // Handle photo upload first if provided
+    let photoUrl: string | undefined;
+    if (photoFile) {
+      try {
+        this.logger.log(`Uploading photo: ${photoFile.originalname}`);
+        const uploadResult = await this.cloudinary.uploadFile(photoFile, 'modules');
+        photoUrl = uploadResult.url;
+        this.logger.log('Photo uploaded successfully', { photoUrl });
+      } catch (error) {
+        this.logger.error('Failed to upload photo:', error);
+        throw new Error(`Failed to upload photo: ${error.message}`);
+      }
+    }
+
     return this.prisma.module.create({
-      data,
+      data: {
+        name: data.name,
+        description: data.description,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        photoUrl,
+        coach: {
+          connect: { id: data.coachId }
+        },
+        referential: {
+          connect: { id: data.refId }
+        }
+      },
       include: {
         coach: true,
         referential: true,

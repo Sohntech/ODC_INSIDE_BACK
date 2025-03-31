@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Promotion, PromotionStatus } from '@prisma/client';
@@ -18,95 +18,74 @@ export class PromotionsService {
     startDate: Date;
     endDate: Date;
     photoUrl?: string;
+    referentialIds?: string | string[];
   }, photoFile?: Express.Multer.File): Promise<Promotion> {
-    this.logger.log('Creating promotion with data:', data);
-    
-    if (photoFile) {
-      this.logger.log('Photo file received:', {
-        filename: photoFile.originalname,
-        size: photoFile.size,
-        mimetype: photoFile.mimetype
-      });
-    }
-
-    const activePromotion = await this.prisma.promotion.findFirst({
-      where: { 
-        status: PromotionStatus.ACTIVE 
-      },
-    });
-
-    if (activePromotion) {
-      throw new ConflictException('Une promotion active existe déjà');
-    }
-
-    // Skip photo processing if there's no file
-    if (!photoFile || !photoFile.buffer) {
-      this.logger.log('No photo file or buffer, skipping photo upload');
-      
-      const createData = {
-        name: data.name,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        photoUrl: null,
-        status: PromotionStatus.ACTIVE,
-      };
-  
-      this.logger.log('Creating promotion without photo:', createData);
-      
-      return this.prisma.promotion.create({
-        data: createData,
-      });
-    }
-    
-    let photoUrl: string | null = null;
-    
-    // First try Cloudinary upload
     try {
-      this.logger.log('Attempting to upload to Cloudinary...');
-      const result = await this.cloudinary.uploadFile(photoFile, 'promotions');
-      photoUrl = result.url;
-      this.logger.log('Successfully uploaded to Cloudinary:', photoUrl);
-    } catch (cloudinaryError) {
-      this.logger.error('Cloudinary upload failed:', cloudinaryError);
-      
-      // Fallback to local storage
-      try {
-        this.logger.log('Falling back to local storage...');
-        // Create uploads directory if it doesn't exist
-        if (!fs.existsSync('./uploads')) {
-          fs.mkdirSync('./uploads', { recursive: true });
+      // Parse referentialIds
+      let processedReferentialIds: string[] = [];
+      if (data.referentialIds) {
+        try {
+          processedReferentialIds = typeof data.referentialIds === 'string' 
+            ? JSON.parse(data.referentialIds.replace(/\s/g, ''))
+            : data.referentialIds;
+        } catch (e) {
+          this.logger.error(`Error parsing referentialIds: ${e.message}`);
+          throw new ConflictException('Invalid referentialIds format');
         }
-        
-        // Generate unique filename
-        const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const extension = photoFile.originalname.split('.').pop();
-        const filename = `${uniquePrefix}.${extension}`;
-        const filepath = `./uploads/${filename}`;
-        
-        // Write the file
-        fs.writeFileSync(filepath, photoFile.buffer);
-        
-        photoUrl = `uploads/${filename}`;
-        this.logger.log(`File saved locally at ${filepath}`);
-      } catch (localError) {
-        this.logger.error('Local storage fallback failed:', localError);
       }
-    }
 
-    // Create the promotion with or without photo
-    const createData = {
-      name: data.name,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      photoUrl,
-      status: PromotionStatus.ACTIVE,
-    };
-    
-    this.logger.log('Creating promotion with final data:', createData);
-    
-    return this.prisma.promotion.create({
-      data: createData,
-    });
+      this.logger.debug(`Processed referentialIds: ${JSON.stringify(processedReferentialIds)}`);
+
+      // Handle file upload
+      let photoUrl = data.photoUrl;
+      if (photoFile) {
+        const uploadResult = await this.cloudinary.uploadFile(photoFile, 'promotions');
+        photoUrl = uploadResult.url;
+      }
+
+      return await this.prisma.$transaction(async (prisma) => {
+        // First verify all referentials exist
+        if (processedReferentialIds.length > 0) {
+          const existingReferentials = await prisma.referential.findMany({
+            where: { id: { in: processedReferentialIds } },
+            select: { id: true, name: true }
+          });
+
+          this.logger.debug(`Found referentials: ${JSON.stringify(existingReferentials)}`);
+
+          if (existingReferentials.length !== processedReferentialIds.length) {
+            const foundIds = existingReferentials.map(ref => ref.id);
+            const missingIds = processedReferentialIds.filter(id => !foundIds.includes(id));
+            throw new NotFoundException(`Referentials not found: ${missingIds.join(', ')}`);
+          }
+        }
+
+        // Create promotion with verified referentials
+        const createData = {
+          name: data.name,
+          startDate: new Date(data.startDate),
+          endDate: new Date(data.endDate),
+          photoUrl,
+          status: PromotionStatus.ACTIVE,
+          referentials: processedReferentialIds.length > 0 ? {
+            connect: processedReferentialIds.map(id => ({ id }))
+          } : undefined
+        };
+
+        this.logger.log('Creating promotion with data:', JSON.stringify(createData, null, 2));
+
+        return prisma.promotion.create({
+          data: createData,
+          include: {
+            referentials: true,
+            learners: true
+          }
+        });
+      });
+    } catch (error) {
+      this.logger.error(`Creation failed: ${error.message}`);
+      throw error;
+    }
   }
 
   async findAll(): Promise<Promotion[]> {
@@ -122,14 +101,14 @@ export class PromotionsService {
     const promotion = await this.prisma.promotion.findUnique({
       where: { id },
       include: {
-        learners: true,
         referentials: true,
+        learners: true,
         events: true,
-      },
+      }
     });
 
     if (!promotion) {
-      throw new NotFoundException('Promotion non trouvée');
+      throw new NotFoundException(`Promotion with ID ${id} not found`);
     }
 
     return promotion;
@@ -191,7 +170,7 @@ export class PromotionsService {
     const activeModules = await this.prisma.module.count({
       where: {
         referential: {
-          promotionId: id,
+          promotions: { some: { id } },
         },
         endDate: {
           gte: new Date(),

@@ -11,8 +11,8 @@ async function bootstrap() {
     app.use(bodyParser.json({ limit: '50mb' }));
     app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
     app.useGlobalPipes(new common_1.ValidationPipe({
-        whitelist: true,
         transform: true,
+        whitelist: true,
     }));
     const config = new swagger_1.DocumentBuilder()
         .setTitle('Sonatel Academy API')

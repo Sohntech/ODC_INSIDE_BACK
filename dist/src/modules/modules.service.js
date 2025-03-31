@@ -8,17 +8,47 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var ModulesService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ModulesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
-let ModulesService = class ModulesService {
-    constructor(prisma) {
+const cloudinary_service_1 = require("../cloudinary/cloudinary.service");
+let ModulesService = ModulesService_1 = class ModulesService {
+    constructor(prisma, cloudinary) {
         this.prisma = prisma;
+        this.cloudinary = cloudinary;
+        this.logger = new common_1.Logger(ModulesService_1.name);
     }
-    async create(data) {
+    async create(data, photoFile) {
+        this.logger.log('Creating module with data:', { ...data, hasPhoto: !!photoFile });
+        let photoUrl;
+        if (photoFile) {
+            try {
+                this.logger.log(`Uploading photo: ${photoFile.originalname}`);
+                const uploadResult = await this.cloudinary.uploadFile(photoFile, 'modules');
+                photoUrl = uploadResult.url;
+                this.logger.log('Photo uploaded successfully', { photoUrl });
+            }
+            catch (error) {
+                this.logger.error('Failed to upload photo:', error);
+                throw new Error(`Failed to upload photo: ${error.message}`);
+            }
+        }
         return this.prisma.module.create({
-            data,
+            data: {
+                name: data.name,
+                description: data.description,
+                startDate: new Date(data.startDate),
+                endDate: new Date(data.endDate),
+                photoUrl,
+                coach: {
+                    connect: { id: data.coachId }
+                },
+                referential: {
+                    connect: { id: data.refId }
+                }
+            },
             include: {
                 coach: true,
                 referential: true,
@@ -118,8 +148,9 @@ let ModulesService = class ModulesService {
     }
 };
 exports.ModulesService = ModulesService;
-exports.ModulesService = ModulesService = __decorate([
+exports.ModulesService = ModulesService = ModulesService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        cloudinary_service_1.CloudinaryService])
 ], ModulesService);
 //# sourceMappingURL=modules.service.js.map

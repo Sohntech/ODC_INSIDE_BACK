@@ -20,11 +20,12 @@ const create_vigil_dto_1 = require("./dto/create-vigil.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
+const swagger_1 = require("@nestjs/swagger");
 let VigilsController = class VigilsController {
     constructor(vigilsService) {
         this.vigilsService = vigilsService;
     }
-    create(createVigilDto, photo) {
+    async create(createVigilDto, photo) {
         return this.vigilsService.create(createVigilDto, photo);
     }
     findAll() {
@@ -45,11 +46,34 @@ __decorate([
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)('ADMIN'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('photo')),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                firstName: { type: 'string' },
+                lastName: { type: 'string' },
+                phone: { type: 'string' },
+                email: { type: 'string' },
+                photo: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
+    }),
     __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.UploadedFile)()),
+    __param(1, (0, common_1.UploadedFile)(new common_1.ParseFilePipeBuilder()
+        .addFileTypeValidator({
+        fileType: /(jpg|jpeg|png)$/,
+    })
+        .build({
+        errorHttpStatusCode: common_1.HttpStatus.UNPROCESSABLE_ENTITY,
+        fileIsRequired: false,
+    }))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [create_vigil_dto_1.CreateVigilDto, Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], VigilsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),

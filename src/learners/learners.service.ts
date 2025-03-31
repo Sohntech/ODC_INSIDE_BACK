@@ -6,6 +6,8 @@ import * as QRCode from 'qrcode';
 import * as fs from 'fs';
 import { File } from 'formidable';
 import { AuthUtils } from '../utils/auth.utils';
+import { CreateLearnerDto } from './dto/create-learner.dto';
+import { ReplaceLearnerDto, UpdateStatusDto } from './dto/update-status.dto';
 
 @Injectable()
 export class LearnersService {
@@ -16,183 +18,197 @@ export class LearnersService {
     private cloudinary: CloudinaryService,
   ) {}
 
-  async create(data: {
-    firstName: string;
-    lastName: string;
-    address?: string;
-    gender: 'MALE' | 'FEMALE';
-    birthDate: Date;
-    birthPlace: string;
-    phone: string;
-    email: string;
-    refId?: string;
-    promotionId: string;
-    photoFile?: Express.Multer.File;
-    tutor: {
-      firstName: string;
-      lastName: string;
-      phone: string;
-      email?: string;
-      address?: string;
-    };
-  }): Promise<Learner> {
-    this.logger.log('Creating learner with data:', {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      refId: data.refId,
-      promotionId: data.promotionId
-    });
+  async create(createLearnerDto: CreateLearnerDto, photoFile?: Express.Multer.File): Promise<Learner> {
+    return this.prisma.$transaction(async (prisma) => {
+      // Add this logging
+      this.logger.log('Received photo file:', {
+        exists: !!photoFile,
+        details: photoFile ? {
+          fieldname: photoFile.fieldname,
+          originalname: photoFile.originalname,
+          size: photoFile.size,
+          mimetype: photoFile.mimetype
+        } : null
+      });
 
-    const existingLearner = await this.prisma.learner.findFirst({
-      where: {
-        OR: [
-          { phone: data.phone },
-          {
-            user: {
-              email: data.email,
+      this.logger.log('Creating learner with data:', {
+        firstName: createLearnerDto.firstName,
+        lastName: createLearnerDto.lastName,
+        email: createLearnerDto.email,
+        refId: createLearnerDto.refId,
+        promotionId: createLearnerDto.promotionId
+      });
+
+      const existingLearner = await prisma.learner.findFirst({
+        where: {
+          OR: [
+            { phone: createLearnerDto.phone },
+            {
+              user: {
+                email: createLearnerDto.email,
+              },
             },
-          },
-        ],
-      },
-    });
+          ],
+        },
+      });
 
-    if (existingLearner) {
-      throw new ConflictException(
-        'Un apprenant avec cet email ou ce téléphone existe déjà',
-      );
-    }
+      if (existingLearner) {
+        throw new ConflictException(
+          'Un apprenant avec cet email ou ce téléphone existe déjà',
+        );
+      }
 
-    // Generate QR code
-    const qrCodeValue = `${data.firstName}-${data.lastName}-${Date.now()}`;
-    const qrCodeBuffer = await QRCode.toBuffer(qrCodeValue);
+      // Generate QR code
+      const qrCodeValue = `${createLearnerDto.firstName}-${createLearnerDto.lastName}-${Date.now()}`;
+      const qrCodeBuffer = await QRCode.toBuffer(qrCodeValue);
 
-    // Create a custom File object
-    const qrCodeFile = {
-      fieldname: 'qrCode',
-      originalname: 'qrcode.png',
-      encoding: '7bit',
-      mimetype: 'image/png',
-      buffer: qrCodeBuffer,
-      size: qrCodeBuffer.length,
-      stream: null,
-      destination: '',
-      filename: 'qrcode.png',
-      path: '',
-    };
+      // Create a custom File object
+      const qrCodeFile = {
+        fieldname: 'qrCode',
+        originalname: 'qrcode.png',
+        encoding: '7bit',
+        mimetype: 'image/png',
+        buffer: qrCodeBuffer,
+        size: qrCodeBuffer.length,
+        stream: null,
+        destination: '',
+        filename: 'qrcode.png',
+        path: '',
+      };
 
-    let qrCodeUrl: string | undefined;
-    
-    // Upload QR code to Cloudinary
-    try {
-      this.logger.log('Attempting to upload QR code to Cloudinary...');
-      const result = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
-      qrCodeUrl = result.url;
-      this.logger.log('Successfully uploaded QR code to Cloudinary:', qrCodeUrl);
-    } catch (error) {
-      this.logger.error('Failed to upload QR code to Cloudinary:', error);
-    }
-
-    let photoUrl: string | undefined;
-    
-    // Process photo if provided
-    if (data.photoFile) {
-      this.logger.log('Photo file received, processing...');
+      let qrCodeUrl: string | undefined;
       
+      // Upload QR code to Cloudinary
       try {
-        // First try Cloudinary upload
-        this.logger.log('Attempting to upload to Cloudinary...');
-        const result = await this.cloudinary.uploadFile(data.photoFile, 'learners');
-        photoUrl = result.url;
-        this.logger.log('Successfully uploaded to Cloudinary:', photoUrl);
-      } catch (cloudinaryError) {
-        this.logger.error('Cloudinary upload failed:', cloudinaryError);
+        this.logger.log('Attempting to upload QR code to Cloudinary...');
+        const result = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
+        qrCodeUrl = result.url;
+        this.logger.log('Successfully uploaded QR code to Cloudinary:', qrCodeUrl);
+      } catch (error) {
+        this.logger.error('Failed to upload QR code to Cloudinary:', error);
+      }
+
+      let photoUrl: string | undefined;
+      
+      // Process photo if provided
+      if (photoFile) {
+        this.logger.log('Photo file received, processing...');
         
-        // Fallback to local storage
         try {
-          this.logger.log('Falling back to local storage...');
-          // Create uploads directory if it doesn't exist
-          if (!fs.existsSync('./uploads/learners')) {
-            fs.mkdirSync('./uploads/learners', { recursive: true });
+          // First try Cloudinary upload
+          this.logger.log('Attempting to upload to Cloudinary...');
+          const result = await this.cloudinary.uploadFile(photoFile, 'learners');
+          photoUrl = result.url;
+          this.logger.log('Successfully uploaded to Cloudinary:', photoUrl);
+        } catch (cloudinaryError) {
+          this.logger.error('Cloudinary upload failed:', cloudinaryError);
+          
+          // Fallback to local storage
+          try {
+            this.logger.log('Falling back to local storage...');
+            // Create uploads directory if it doesn't exist
+            if (!fs.existsSync('./uploads/learners')) {
+              fs.mkdirSync('./uploads/learners', { recursive: true });
+            }
+            
+            // Generate unique filename
+            const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            const extension = photoFile.originalname.split('.').pop();
+            const filename = `${uniquePrefix}.${extension}`;
+            const filepath = `./uploads/learners/${filename}`;
+            
+            // Write the file
+            fs.writeFileSync(filepath, photoFile.buffer);
+            
+            photoUrl = `uploads/learners/${filename}`;
+            this.logger.log(`File saved locally at ${filepath}`);
+          } catch (localError) {
+            this.logger.error('Local storage fallback failed:', localError);
           }
-          
-          // Generate unique filename
-          const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-          const extension = data.photoFile.originalname.split('.').pop();
-          const filename = `${uniquePrefix}.${extension}`;
-          const filepath = `./uploads/learners/${filename}`;
-          
-          // Write the file
-          fs.writeFileSync(filepath, data.photoFile.buffer);
-          
-          photoUrl = `uploads/learners/${filename}`;
-          this.logger.log(`File saved locally at ${filepath}`);
-        } catch (localError) {
-          this.logger.error('Local storage fallback failed:', localError);
         }
       }
-    }
 
-    // Generate and hash password
-    const password = AuthUtils.generatePassword();
-    const hashedPassword = await AuthUtils.hashPassword(password);
+      // Generate and hash password
+      const password = AuthUtils.generatePassword();
+      const hashedPassword = await AuthUtils.hashPassword(password);
 
-    // Prepare createData object
-    const createData: any = {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      address: data.address,
-      gender: data.gender,
-      birthDate: data.birthDate,
-      birthPlace: data.birthPlace,
-      phone: data.phone,
-      photoUrl,
-      qrCode: qrCodeUrl,
-      status: LearnerStatus.ACTIVE,
-      user: {
-        create: {
-          email: data.email,
-          password: hashedPassword, // Use hashed password
-          role: 'APPRENANT',
+      // Prepare createData object
+      const createData: any = {
+        firstName: createLearnerDto.firstName,
+        lastName: createLearnerDto.lastName,
+        address: createLearnerDto.address,
+        gender: createLearnerDto.gender,
+        birthDate: createLearnerDto.birthDate,
+        birthPlace: createLearnerDto.birthPlace,
+        phone: createLearnerDto.phone,
+        photoUrl,
+        qrCode: qrCodeUrl,
+        status: createLearnerDto.status || LearnerStatus.ACTIVE,
+        user: {
+          create: {
+            email: createLearnerDto.email,
+            password: hashedPassword, // Use hashed password
+            role: 'APPRENANT',
+          },
         },
-      },
-      tutor: {
-        create: {
-          firstName: data.tutor.firstName,
-          lastName: data.tutor.lastName,
-          phone: data.tutor.phone,
-          email: data.tutor.email,
-          address: data.tutor.address,
+        tutor: {
+          create: {
+            firstName: createLearnerDto.tutor.firstName,
+            lastName: createLearnerDto.tutor.lastName,
+            phone: createLearnerDto.tutor.phone,
+            email: createLearnerDto.tutor.email,
+            address: createLearnerDto.tutor.address,
+          },
         },
-      },
-      promotion: {
-        connect: {
-          id: data.promotionId
+        promotion: {
+          connect: {
+            id: createLearnerDto.promotionId
+          }
+        },
+        referential: createLearnerDto.refId ? {
+          connect: {
+            id: createLearnerDto.refId
+          }
+        } : undefined,
+        kit: {
+          create: {
+            laptop: false,
+            charger: false,
+            bag: false,
+            polo: false
+          }
         }
-      },
-      referential: data.refId ? {
-        connect: {
-          id: data.refId
+      };
+
+      this.logger.log('Creating learner with final data:', createData);
+
+      const learner = await prisma.learner.create({
+        data: createData,
+        include: {
+          user: true,
+          promotion: true,
+          referential: true,
+          tutor: true,
+          kit: true,
+          statusHistory: true // Add this to track initial status
+        },
+      });
+
+      // Create initial status history without previousStatus for new learners
+      await prisma.learnerStatusHistory.create({
+        data: {
+          learnerId: learner.id,
+          newStatus: learner.status,
+          reason: 'Initial status on creation',
+          date: new Date()
         }
-      } : undefined
-    };
+      });
 
-    this.logger.log('Creating learner with final data:', createData);
+      // Send password email
+      await AuthUtils.sendPasswordEmail(createLearnerDto.email, password, 'Apprenant');
 
-    const learner = await this.prisma.learner.create({
-      data: createData,
-      include: {
-        user: true,
-        promotion: true,
-        referential: true,
-        tutor: true,
-      },
+      return learner;
     });
-
-    // Send password email
-    await AuthUtils.sendPasswordEmail(data.email, password, 'Apprenant');
-
-    return learner;
   }
 
   async findAll(): Promise<Learner[]> {
@@ -361,4 +377,125 @@ export class LearnersService {
       attendanceRate: totalDays > 0 ? (presentDays / totalDays) * 100 : 0,
     };
   }
+
+  async updateLearnerStatus(
+    learnerId: string,
+    updateStatusDto: UpdateStatusDto
+  ): Promise<Learner> {
+    const learner = await this.findOne(learnerId);
+    
+    this.logger.log(`Updating learner ${learnerId} status from ${learner.status} to ${updateStatusDto.status}`);
+
+    return this.prisma.$transaction(async (prisma) => {
+      // Create status history record
+      await prisma.learnerStatusHistory.create({
+        data: {
+          learnerId,
+          previousStatus: learner.status,
+          newStatus: updateStatusDto.status,
+          reason: updateStatusDto.reason,
+        }
+      });
+
+      // Update learner status
+      return prisma.learner.update({
+        where: { id: learnerId },
+        data: {
+          status: updateStatusDto.status,
+        },
+        include: {
+          user: true,
+          promotion: true,
+          referential: true,
+          statusHistory: true
+        }
+      });
+    });
+  }
+
+  async replaceLearner(replacementDto: ReplaceLearnerDto): Promise<{
+    replacedLearner: Learner;
+    replacementLearner: Learner;
+  }> {
+    const { activeLearnerForReplacement, replacementLearnerId, reason } = replacementDto;
+
+    return this.prisma.$transaction(async (prisma) => {
+      // 1. Verify active learner
+      const activeLearner = await prisma.learner.findUnique({
+        where: { id: activeLearnerForReplacement },
+        include: { promotion: true }
+      });
+
+      if (!activeLearner || activeLearner.status !== 'ACTIVE') {
+        throw new ConflictException('Invalid active learner or learner is not active');
+      }
+
+      // 2. Verify waiting list learner
+      const waitingLearner = await prisma.learner.findUnique({
+        where: { id: replacementLearnerId },
+      });
+
+      if (!waitingLearner || waitingLearner.status !== 'WAITING') {
+        throw new ConflictException('Invalid replacement learner or learner is not in waiting list');
+      }
+
+      // 3. Update active learner to REPLACED
+      const replacedLearner = await prisma.learner.update({
+        where: { id: activeLearnerForReplacement },
+        data: {
+          status: 'REPLACED',
+          statusHistory: {
+            create: {
+              previousStatus: 'ACTIVE',
+              newStatus: 'REPLACED',
+              reason,
+              date: new Date()
+            }
+          }
+        },
+        include: { promotion: true }
+      });
+
+      // 4. Update waiting learner to REPLACEMENT
+      const replacementLearner = await prisma.learner.update({
+        where: { id: replacementLearnerId },
+        data: {
+          status: 'REPLACEMENT',
+          promotionId: activeLearner.promotionId,
+          statusHistory: {
+            create: {
+              previousStatus: 'WAITING',
+              newStatus: 'REPLACEMENT',
+              reason,
+              date: new Date()
+            }
+          }
+        },
+        include: { promotion: true }
+      });
+
+      return { replacedLearner, replacementLearner };
+    });
+  }
+
+  async getWaitingList(promotionId?: string): Promise<Learner[]> {
+    return this.prisma.learner.findMany({
+      where: {
+        status: 'WAITING',
+        ...(promotionId && { promotionId })
+      },
+      include: {
+        user: true,
+        promotion: true
+      }
+    });
+  }
+
+  async getStatusHistory(learnerId: string) {
+    return this.prisma.learnerStatusHistory.findMany({
+      where: { learnerId },
+      orderBy: { date: 'desc' }
+    });
+  }
 }
+

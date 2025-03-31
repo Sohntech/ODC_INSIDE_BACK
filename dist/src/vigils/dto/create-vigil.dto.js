@@ -11,24 +11,34 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateVigilDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
+const swagger_1 = require("@nestjs/swagger");
 class CreateVigilDto {
 }
 exports.CreateVigilDto = CreateVigilDto;
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'First name of the vigil' }),
     (0, class_validator_1.IsString)(),
+    (0, class_transformer_1.Transform)(({ value }) => value?.trim()),
     __metadata("design:type", String)
 ], CreateVigilDto.prototype, "firstName", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Last name of the vigil' }),
     (0, class_validator_1.IsString)(),
+    (0, class_transformer_1.Transform)(({ value }) => value?.trim()),
     __metadata("design:type", String)
 ], CreateVigilDto.prototype, "lastName", void 0);
 __decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Phone number of the vigil' }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => value?.trim()),
     __metadata("design:type", String)
 ], CreateVigilDto.prototype, "phone", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Email address of the vigil' }),
     (0, class_validator_1.IsEmail)(),
+    (0, class_transformer_1.Transform)(({ value }) => value?.trim().toLowerCase()),
     __metadata("design:type", String)
 ], CreateVigilDto.prototype, "email", void 0);
 //# sourceMappingURL=create-vigil.dto.js.map

@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
-import { Coach } from '@prisma/client';
+import { Coach, UserRole } from '@prisma/client';
+import { AuthUtils } from '../utils/auth.utils';
 import * as fs from 'fs';
+import { CreateCoachDto } from './dto/create-coach.dto';
 
 @Injectable()
 export class CoachesService {
@@ -13,111 +15,90 @@ export class CoachesService {
     private cloudinary: CloudinaryService,
   ) {}
 
-  async create(data: {
-    firstName: string;
-    lastName: string;
-    phone?: string;
-    email: string;
-    password: string;
-    refId?: string;
-    photoFile?: Express.Multer.File;
-  }): Promise<Coach> {
-    this.logger.log('Creating coach with data:', {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      refId: data.refId
+  async create(createCoachDto: CreateCoachDto, photoFile?: Express.Multer.File): Promise<Coach> {
+    this.logger.log('Starting coach creation process...', { 
+      hasFile: !!photoFile,
+      fileName: photoFile?.originalname,
+      fileSize: photoFile?.size
     });
 
-    const existingCoach = await this.prisma.coach.findFirst({
-      where: {
-        OR: [
-          { phone: data.phone },
-          {
-            user: {
-              email: data.email,
-            },
-          },
-        ],
-      },
-    });
-
-    if (existingCoach) {
-      throw new ConflictException('Un coach avec cet email ou ce téléphone existe déjà');
-    }
-
+    // Upload photo first if provided
     let photoUrl: string | undefined;
-    
-    // Process photo if provided
-    if (data.photoFile) {
-      this.logger.log('Photo file received, processing...');
-      
+    if (photoFile) {
       try {
-        // First try Cloudinary upload
-        this.logger.log('Attempting to upload to Cloudinary...');
-        const result = await this.cloudinary.uploadFile(data.photoFile, 'coaches');
-        photoUrl = result.url;
-        this.logger.log('Successfully uploaded to Cloudinary:', photoUrl);
-      } catch (cloudinaryError) {
-        this.logger.error('Cloudinary upload failed:', cloudinaryError);
-        
-        // Fallback to local storage
-        try {
-          this.logger.log('Falling back to local storage...');
-          // Create uploads directory if it doesn't exist
-          if (!fs.existsSync('./uploads/coaches')) {
-            fs.mkdirSync('./uploads/coaches', { recursive: true });
-          }
-          
-          // Generate unique filename
-          const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-          const extension = data.photoFile.originalname.split('.').pop();
-          const filename = `${uniquePrefix}.${extension}`;
-          const filepath = `./uploads/coaches/${filename}`;
-          
-          // Write the file
-          fs.writeFileSync(filepath, data.photoFile.buffer);
-          
-          photoUrl = `uploads/coaches/${filename}`;
-          this.logger.log(`File saved locally at ${filepath}`);
-        } catch (localError) {
-          this.logger.error('Local storage fallback failed:', localError);
-        }
+        this.logger.log(`Uploading file: ${photoFile.originalname}`);
+        const uploadResult = await this.cloudinary.uploadFile(photoFile, 'coaches');
+        photoUrl = uploadResult.url;
+        this.logger.log('Photo uploaded successfully', { photoUrl });
+      } catch (error) {
+        this.logger.error('Failed to upload photo:', error);
+        throw new Error(`Failed to upload photo: ${error.message}`);
       }
     }
 
-    const createData: any = {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phone: data.phone,
-      photoUrl,
-      user: {
-        create: {
-          email: data.email,
-          password: data.password,
-          role: 'COACH',
-        },
-      },
-    };
+    // Create coach with transaction
+    try {
+      const coach = await this.prisma.$transaction(async (prisma) => {
+        // Check for existing coach
+        const existingCoach = await prisma.coach.findFirst({
+          where: {
+            OR: [
+              { phone: createCoachDto.phone },
+              { user: { email: createCoachDto.email } },
+            ],
+          },
+        });
 
-    if (data.refId) {
-      createData.refId = data.refId;
-      createData.referential = {
-        connect: {
-          id: data.refId
+        if (existingCoach) {
+          throw new ConflictException('Un coach avec cet email ou ce téléphone existe déjà');
         }
-      };
+
+        // Generate password
+        const password = AuthUtils.generatePassword();
+        const hashedPassword = await AuthUtils.hashPassword(password);
+
+        // Create coach
+        const coachData = {
+          firstName: createCoachDto.firstName,
+          lastName: createCoachDto.lastName,
+          phone: createCoachDto.phone,
+          photoUrl,
+          ...(createCoachDto.refId && {
+            referential: {
+              connect: { id: createCoachDto.refId }
+            }
+          }),
+          user: {
+            create: {
+              email: createCoachDto.email,
+              password: hashedPassword,
+              role: UserRole.COACH
+            }
+          }
+        };
+
+        this.logger.log('Creating coach with data:', coachData);
+
+        const newCoach = await prisma.coach.create({
+          data: coachData,
+          include: {
+            user: true,
+            referential: true,
+          },
+        });
+
+        // Send password email
+        await AuthUtils.sendPasswordEmail(createCoachDto.email, password, 'Coach');
+
+        return newCoach;
+      });
+
+      this.logger.log('Coach created successfully:', coach.id);
+      return coach;
+    } catch (error) {
+      this.logger.error('Failed to create coach:', error);
+      throw error;
     }
-
-    this.logger.log('Creating coach with final data:', createData);
-
-    return this.prisma.coach.create({
-      data: createData,
-      include: {
-        user: true,
-        referential: true,
-      },
-    });
   }
 
   async findAll(): Promise<Coach[]> {

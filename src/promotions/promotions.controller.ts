@@ -20,6 +20,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { memoryStorage } from 'multer';
+import { CreatePromotionDto } from './dto/create-promotion.dto';
 
 @ApiTags('promotions')
 @Controller('promotions')
@@ -31,86 +32,12 @@ export class PromotionsController {
   constructor(private readonly promotionsService: PromotionsService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
-  @UseInterceptors(
-    FileInterceptor('photoFile', {
-      storage: memoryStorage(),
-    })
-  )
-  @ApiOperation({ summary: 'Créer une nouvelle promotion' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Promotion créée' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        startDate: { type: 'string', format: 'date-time' },
-        endDate: { type: 'string', format: 'date-time' },
-        photoFile: { 
-          type: 'string', 
-          format: 'binary' 
-        },
-      },
-      required: ['name', 'startDate', 'endDate'],
-    },
-  })
+  @UseInterceptors(FileInterceptor('photoFile'))
   async create(
-    @Body() formData: any,
+    @Body() createPromotionDto: CreatePromotionDto,
     @UploadedFile() photoFile?: Express.Multer.File
   ) {
-    this.logger.log('Form data received:', formData);
-    
-    // Log detailed information about the file
-    if (photoFile) {
-      this.logger.log('Photo file received:', {
-        originalname: photoFile.originalname,
-        mimetype: photoFile.mimetype,
-        size: photoFile.size,
-        buffer: photoFile.buffer ? `Buffer size: ${photoFile.buffer.length} bytes` : 'No buffer',
-      });
-    } else {
-      this.logger.log('No photo file received');
-    }
-    
-    try {
-      // Clean input data from extra quotes
-      let name = formData.name;
-      let startDate = formData.startDate;
-      let endDate = formData.endDate;
-      
-      // Remove quotes if they exist
-      if (typeof name === 'string' && name.startsWith('"') && name.endsWith('"')) {
-        name = name.substring(1, name.length - 1);
-      }
-      
-      if (typeof startDate === 'string' && startDate.startsWith('"') && startDate.endsWith('"')) {
-        startDate = startDate.substring(1, startDate.length - 1);
-      }
-      
-      if (typeof endDate === 'string' && endDate.startsWith('"') && endDate.endsWith('"')) {
-        endDate = endDate.substring(1, endDate.length - 1);
-      }
-      
-      // Create data object with cleaned values
-      const createData = {
-        name,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-      };
-      
-      // Check if dates are valid
-      if (isNaN(createData.startDate.getTime()) || isNaN(createData.endDate.getTime())) {
-        throw new BadRequestException('Invalid date format. Use ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)');
-      }
-      
-      this.logger.log('Processed data:', createData);
-      
-      return this.promotionsService.create(createData, photoFile);
-    } catch (error) {
-      this.logger.error('Error creating promotion:', error);
-      throw error;
-    }
+    return this.promotionsService.create(createPromotionDto, photoFile);
   }
 
   @Get()

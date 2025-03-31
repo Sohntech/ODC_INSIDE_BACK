@@ -14,6 +14,7 @@ exports.CloudinaryService = void 0;
 const common_1 = require("@nestjs/common");
 const cloudinary_1 = require("cloudinary");
 const config_1 = require("@nestjs/config");
+const streamifier = require("streamifier");
 let CloudinaryService = CloudinaryService_1 = class CloudinaryService {
     constructor(configService) {
         this.configService = configService;
@@ -47,41 +48,27 @@ let CloudinaryService = CloudinaryService_1 = class CloudinaryService {
     }
     async uploadFile(file, folder) {
         if (!this.isConfigured) {
-            this.logger.error('Cloudinary is not configured');
             throw new Error('Cloudinary is not configured');
         }
-        this.logger.log(`Attempting to upload file ${file.originalname} to folder ${folder}`);
-        if (!file) {
-            this.logger.error('File is missing or undefined');
-            throw new Error('File is missing or undefined');
-        }
-        if (!file.buffer) {
-            this.logger.error('File buffer is missing');
+        if (!file || !file.buffer) {
+            this.logger.error('File or file buffer is missing');
             throw new Error('File buffer is missing');
         }
-        this.logger.log(`File details: ${file.originalname}, size: ${file.size}, mimetype: ${file.mimetype}`);
+        this.logger.log(`Attempting to upload file ${file.originalname} to folder ${folder}`);
         return new Promise((resolve, reject) => {
-            try {
-                const uploadStream = cloudinary_1.v2.uploader.upload_stream({
-                    folder,
-                    resource_type: 'auto',
-                }, (error, result) => {
-                    if (error) {
-                        this.logger.error(`Error uploading to Cloudinary: ${error.message}`);
-                        return reject(error);
-                    }
-                    this.logger.log(`Successfully uploaded file. URL: ${result.secure_url}`);
-                    resolve({
-                        url: result.secure_url,
-                        public_id: result.public_id,
-                    });
-                });
-                uploadStream.end(file.buffer);
-            }
-            catch (error) {
-                this.logger.error(`Error in Cloudinary upload stream: ${error.message}`);
-                reject(error);
-            }
+            const uploadStream = cloudinary_1.v2.uploader.upload_stream({
+                folder: folder,
+                resource_type: 'auto',
+            }, (error, result) => {
+                if (error) {
+                    this.logger.error('Upload failed:', error);
+                    reject(error);
+                    return;
+                }
+                this.logger.log(`File uploaded successfully. URL: ${result.secure_url}`);
+                resolve({ url: result.secure_url });
+            });
+            streamifier.createReadStream(file.buffer).pipe(uploadStream);
         });
     }
     async deleteFile(publicId) {

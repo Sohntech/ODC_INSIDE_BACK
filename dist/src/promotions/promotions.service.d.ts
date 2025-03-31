@@ -11,6 +11,7 @@ export declare class PromotionsService {
         startDate: Date;
         endDate: Date;
         photoUrl?: string;
+        referentialIds?: string | string[];
     }, photoFile?: Express.Multer.File): Promise<Promotion>;
     findAll(): Promise<Promotion[]>;
     findOne(id: string): Promise<Promotion>;

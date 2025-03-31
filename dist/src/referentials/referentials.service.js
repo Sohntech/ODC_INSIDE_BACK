@@ -18,11 +18,15 @@ let ReferentialsService = class ReferentialsService {
     }
     async create(data) {
         return this.prisma.referential.create({
-            data,
+            data: {
+                ...data,
+                promotions: undefined,
+            },
             include: {
                 learners: true,
                 coaches: true,
                 modules: true,
+                promotions: true,
             },
         });
     }
@@ -87,6 +91,19 @@ let ReferentialsService = class ReferentialsService {
             capacity: referential.capacity,
             availableSpots: referential.capacity - totalLearners,
         };
+    }
+    async assignToPromotion(referentialIds, promotionId) {
+        return this.prisma.promotion.update({
+            where: { id: promotionId },
+            data: {
+                referentials: {
+                    connect: referentialIds.map(id => ({ id })),
+                },
+            },
+            include: {
+                referentials: true,
+            },
+        });
     }
 };
 exports.ReferentialsService = ReferentialsService;

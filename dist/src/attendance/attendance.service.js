@@ -125,13 +125,26 @@ let AttendanceService = class AttendanceService {
             },
         });
     }
-    async updateAbsenceStatus(attendanceId, status) {
+    async updateAbsenceStatus(attendanceId, status, comment) {
+        const attendance = await this.prisma.learnerAttendance.findUnique({
+            where: { id: attendanceId },
+            include: { learner: true }
+        });
+        if (!attendance) {
+            throw new common_1.NotFoundException('Attendance record not found');
+        }
+        if (attendance.status !== client_1.AbsenceStatus.PENDING) {
+            throw new common_1.BadRequestException('This absence justification has already been processed');
+        }
         return this.prisma.learnerAttendance.update({
             where: { id: attendanceId },
-            data: { status },
-            include: {
-                learner: true,
+            data: {
+                status,
+                justificationComment: comment
             },
+            include: {
+                learner: true
+            }
         });
     }
     async getLatestScans() {
