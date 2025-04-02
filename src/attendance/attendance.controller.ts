@@ -5,6 +5,7 @@ import {
   Put,
   Body,
   Param,
+  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -93,5 +94,26 @@ export class AttendanceController {
   @ApiOperation({ summary: 'Récupérer les derniers scans' })
   async getLatestScans() {
     return this.attendanceService.getLatestScans();
+  }
+
+  @Get('stats/daily')
+  async getDailyStats(@Query('date') date: string) {
+    return this.attendanceService.getDailyStats(date);
+  }
+
+  @Get('stats/monthly')
+  async getMonthlyStats(
+    @Query('year') year: string,
+    @Query('month') month: string,
+  ) {
+    return this.attendanceService.getMonthlyStats(
+      parseInt(year, 10),
+      parseInt(month, 10),
+    );
+  }
+
+  @Get('stats/yearly')
+  async getYearlyStats(@Query('year') year: string) {
+    return this.attendanceService.getYearlyStats(parseInt(year, 10));
   }
 }

@@ -8,17 +8,21 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PromotionsModule = void 0;
 const common_1 = require("@nestjs/common");
-const promotions_service_1 = require("./promotions.service");
 const promotions_controller_1 = require("./promotions.controller");
+const promotions_service_1 = require("./promotions.service");
+const prisma_module_1 = require("../prisma/prisma.module");
 const cloudinary_module_1 = require("../cloudinary/cloudinary.module");
 let PromotionsModule = class PromotionsModule {
 };
 exports.PromotionsModule = PromotionsModule;
 exports.PromotionsModule = PromotionsModule = __decorate([
     (0, common_1.Module)({
-        imports: [cloudinary_module_1.CloudinaryModule],
-        providers: [promotions_service_1.PromotionsService],
+        imports: [
+            prisma_module_1.PrismaModule,
+            cloudinary_module_1.CloudinaryModule,
+        ],
         controllers: [promotions_controller_1.PromotionsController],
+        providers: [promotions_service_1.PromotionsService],
         exports: [promotions_service_1.PromotionsService],
     })
 ], PromotionsModule);

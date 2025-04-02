@@ -11,6 +11,8 @@ import {
   UploadedFile,
   Logger,
   BadRequestException,
+  ParseFilePipe,
+  FileTypeValidator,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
@@ -32,12 +34,27 @@ export class PromotionsController {
   constructor(private readonly promotionsService: PromotionsService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('photoFile'))
+  @UseInterceptors(FileInterceptor('photo'))
   async create(
     @Body() createPromotionDto: CreatePromotionDto,
-    @UploadedFile() photoFile?: Express.Multer.File
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    ) photo?: Express.Multer.File,
   ) {
-    return this.promotionsService.create(createPromotionDto, photoFile);
+    // Convert referentialIds string to array if it exists
+    if (createPromotionDto.referentialIds && typeof createPromotionDto.referentialIds === 'string') {
+      createPromotionDto.referentialIds = createPromotionDto.referentialIds
+        .split(',')
+        .map(id => id.trim())
+        .filter(Boolean);
+    }
+
+    return this.promotionsService.create(createPromotionDto, photo);
   }
 
   @Get()

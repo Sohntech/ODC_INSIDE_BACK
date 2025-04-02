@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Promotion, PromotionStatus } from '@prisma/client';
 import * as fs from 'fs';
+import { CreatePromotionDto } from './dto/create-promotion.dto';
 
 @Injectable()
 export class PromotionsService {
@@ -13,77 +14,69 @@ export class PromotionsService {
     private cloudinary: CloudinaryService,
   ) {}
 
-  async create(data: {
-    name: string;
-    startDate: Date;
-    endDate: Date;
-    photoUrl?: string;
-    referentialIds?: string | string[];
-  }, photoFile?: Express.Multer.File): Promise<Promotion> {
+  async create(data: CreatePromotionDto, photoFile?: Express.Multer.File): Promise<Promotion> {
     try {
-      // Parse referentialIds
-      let processedReferentialIds: string[] = [];
-      if (data.referentialIds) {
-        try {
-          processedReferentialIds = typeof data.referentialIds === 'string' 
-            ? JSON.parse(data.referentialIds.replace(/\s/g, ''))
-            : data.referentialIds;
-        } catch (e) {
-          this.logger.error(`Error parsing referentialIds: ${e.message}`);
-          throw new ConflictException('Invalid referentialIds format');
-        }
-      }
-
-      this.logger.debug(`Processed referentialIds: ${JSON.stringify(processedReferentialIds)}`);
-
-      // Handle file upload
-      let photoUrl = data.photoUrl;
-      if (photoFile) {
-        const uploadResult = await this.cloudinary.uploadFile(photoFile, 'promotions');
-        photoUrl = uploadResult.url;
-      }
-
       return await this.prisma.$transaction(async (prisma) => {
-        // First verify all referentials exist
-        if (processedReferentialIds.length > 0) {
+        // Check for active promotion first
+        const activePromotion = await prisma.promotion.findFirst({
+          where: { status: PromotionStatus.ACTIVE }
+        });
+
+        // Handle photo upload
+        let photoUrl = undefined;
+        if (photoFile) {
+          const uploadResult = await this.cloudinary.uploadFile(photoFile, 'promotions');
+          photoUrl = uploadResult.url;
+        }
+
+        // Clean and validate referentialIds
+        const referentialIds = Array.isArray(data.referentialIds) 
+          ? data.referentialIds.filter(Boolean)
+          : [];
+
+        this.logger.debug(`Processing referentialIds: ${referentialIds.join(', ')}`);
+
+        // Verify referentials exist
+        if (referentialIds.length > 0) {
           const existingReferentials = await prisma.referential.findMany({
-            where: { id: { in: processedReferentialIds } },
-            select: { id: true, name: true }
+            where: { id: { in: referentialIds } },
+            select: { id: true }
           });
 
-          this.logger.debug(`Found referentials: ${JSON.stringify(existingReferentials)}`);
-
-          if (existingReferentials.length !== processedReferentialIds.length) {
+          if (existingReferentials.length !== referentialIds.length) {
             const foundIds = existingReferentials.map(ref => ref.id);
-            const missingIds = processedReferentialIds.filter(id => !foundIds.includes(id));
+            const missingIds = referentialIds.filter(id => !foundIds.includes(id));
             throw new NotFoundException(`Referentials not found: ${missingIds.join(', ')}`);
           }
         }
 
-        // Create promotion with verified referentials
+        // Prepare creation data
         const createData = {
           name: data.name,
           startDate: new Date(data.startDate),
           endDate: new Date(data.endDate),
           photoUrl,
-          status: PromotionStatus.ACTIVE,
-          referentials: processedReferentialIds.length > 0 ? {
-            connect: processedReferentialIds.map(id => ({ id }))
-          } : undefined
+          status: activePromotion ? PromotionStatus.INACTIVE : PromotionStatus.ACTIVE,
+          referentials: referentialIds.length > 0 
+            ? { connect: referentialIds.map(id => ({ id })) }
+            : undefined
         };
 
-        this.logger.log('Creating promotion with data:', JSON.stringify(createData, null, 2));
+        this.logger.debug(`Creating promotion with data: ${JSON.stringify(createData, null, 2)}`);
 
-        return prisma.promotion.create({
+        // Create the promotion
+        const newPromotion = await prisma.promotion.create({
           data: createData,
           include: {
             referentials: true,
             learners: true
           }
         });
+
+        return newPromotion;
       });
     } catch (error) {
-      this.logger.error(`Creation failed: ${error.message}`);
+      this.logger.error(`Promotion creation failed: ${error.message}`);
       throw error;
     }
   }
@@ -115,28 +108,37 @@ export class PromotionsService {
   }
 
   async update(id: string, data: Partial<Promotion>): Promise<Promotion> {
-    const promotion = await this.findOne(id);
+    return await this.prisma.$transaction(async (prisma) => {
+      const promotion = await this.findOne(id);
 
-    if (data.status === PromotionStatus.ACTIVE) {
-      const activePromotion = await this.prisma.promotion.findFirst({
-        where: {
-          status: PromotionStatus.ACTIVE,
-          id: { not: id },
+      // If trying to activate this promotion
+      if (data.status === PromotionStatus.ACTIVE) {
+        // Find current active promotion
+        const activePromotion = await prisma.promotion.findFirst({
+          where: {
+            status: PromotionStatus.ACTIVE,
+            id: { not: id },
+          },
+        });
+
+        if (activePromotion) {
+          // Deactivate current active promotion
+          await prisma.promotion.update({
+            where: { id: activePromotion.id },
+            data: { status: PromotionStatus.INACTIVE }
+          });
+        }
+      }
+
+      // Update the promotion
+      return prisma.promotion.update({
+        where: { id },
+        data,
+        include: {
+          learners: true,
+          referentials: true,
         },
       });
-
-      if (activePromotion) {
-        throw new ConflictException('Une autre promotion est déjà active');
-      }
-    }
-
-    return this.prisma.promotion.update({
-      where: { id },
-      data,
-      include: {
-        learners: true,
-        referentials: true,
-      },
     });
   }
 

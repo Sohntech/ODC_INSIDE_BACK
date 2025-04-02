@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsDateString, IsOptional, IsArray } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 
 export class CreatePromotionDto {
   @ApiProperty({ description: 'Name of the promotion' })
@@ -15,14 +15,14 @@ export class CreatePromotionDto {
   @IsDateString()
   endDate: Date;
 
-  @ApiPropertyOptional({ description: 'Array of referential IDs' })
+  @ApiPropertyOptional({ description: 'Comma-separated referential IDs' })
   @IsOptional()
   @Transform(({ value }) => {
+    if (!value) return [];
     if (typeof value === 'string') {
-      return JSON.parse(value.replace(/\s/g, ''));
+      return value.split(',').map(id => id.trim()).filter(Boolean);
     }
     return value;
   })
-  @IsArray()
-  referentialIds?: string[];
+  referentialIds?: string | string[];
 }

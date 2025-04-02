@@ -201,6 +201,104 @@ export class AttendanceService {
     };
   }
 
+  async getDailyStats(date: string) {
+    const targetDate = new Date(date);
+    
+    const [learnerStats, coachStats] = await Promise.all([
+      this.prisma.learnerAttendance.groupBy({
+        by: ['isPresent', 'isLate'],
+        where: {
+          date: targetDate,
+        },
+        _count: true,
+      }),
+      this.prisma.coachAttendance.groupBy({
+        by: ['isPresent', 'isLate'],
+        where: {
+          date: targetDate,
+        },
+        _count: true,
+      }),
+    ]);
+
+    const present = learnerStats.find(s => s.isPresent && !s.isLate)?._count || 0;
+    const late = learnerStats.find(s => s.isPresent && s.isLate)?._count || 0;
+    const absent = learnerStats.find(s => !s.isPresent)?._count || 0;
+
+    return {
+      present,
+      late,
+      absent,
+      total: present + late + absent,
+    };
+  }
+
+  async getMonthlyStats(year: number, month: number) {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+
+    const attendanceRecords = await this.prisma.learnerAttendance.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      orderBy: {
+        date: 'asc',
+      },
+    });
+
+    const days = [];
+    let currentDate = startDate;
+    while (currentDate <= endDate) {
+      const dayRecords = attendanceRecords.filter(
+        record => record.date.getDate() === currentDate.getDate()
+      );
+      
+      days.push({
+        date: currentDate.getDate(),
+        present: dayRecords.filter(r => r.isPresent && !r.isLate).length,
+        late: dayRecords.filter(r => r.isPresent && r.isLate).length,
+        absent: dayRecords.filter(r => !r.isPresent).length,
+      });
+
+      currentDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
+    }
+
+    return { days };
+  }
+
+  async getYearlyStats(year: number) {
+    const startDate = new Date(year, 0, 1);
+    const endDate = new Date(year, 11, 31);
+
+    const attendanceRecords = await this.prisma.learnerAttendance.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
+
+    const months = [];
+    for (let month = 0; month < 12; month++) {
+      const monthRecords = attendanceRecords.filter(
+        record => record.date.getMonth() === month
+      );
+
+      months.push({
+        month: month + 1,
+        present: monthRecords.filter(r => r.isPresent && !r.isLate).length,
+        late: monthRecords.filter(r => r.isPresent && r.isLate).length,
+        absent: monthRecords.filter(r => !r.isPresent).length,
+      });
+    }
+
+    return { months };
+  }
+
   @Cron('0 0 13 * * 1-5') // Du lundi au vendredi à 13h
   async markAbsentees() {
     const now = new Date();

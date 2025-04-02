@@ -26,11 +26,11 @@ export declare class AttendanceService {
         };
     } & {
         id: string;
+        justification: string | null;
         date: Date;
         isPresent: boolean;
         isLate: boolean;
         scanTime: Date | null;
-        justification: string | null;
         justificationComment: string | null;
         status: import(".prisma/client").$Enums.AbsenceStatus;
         documentUrl: string | null;
@@ -61,11 +61,11 @@ export declare class AttendanceService {
             };
         } & {
             id: string;
+            justification: string | null;
             date: Date;
             isPresent: boolean;
             isLate: boolean;
             scanTime: Date | null;
-            justification: string | null;
             justificationComment: string | null;
             status: import(".prisma/client").$Enums.AbsenceStatus;
             documentUrl: string | null;
@@ -95,6 +95,18 @@ export declare class AttendanceService {
             updatedAt: Date;
             coachId: string;
         })[];
+    }>;
+    getDailyStats(date: string): Promise<{
+        present: number;
+        late: number;
+        absent: number;
+        total: number;
+    }>;
+    getMonthlyStats(year: number, month: number): Promise<{
+        days: any[];
+    }>;
+    getYearlyStats(year: number): Promise<{
+        months: any[];
     }>;
     markAbsentees(): Promise<void>;
 }

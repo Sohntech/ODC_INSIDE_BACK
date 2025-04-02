@@ -28,8 +28,14 @@ let PromotionsController = PromotionsController_1 = class PromotionsController {
         this.promotionsService = promotionsService;
         this.logger = new common_1.Logger(PromotionsController_1.name);
     }
-    async create(createPromotionDto, photoFile) {
-        return this.promotionsService.create(createPromotionDto, photoFile);
+    async create(createPromotionDto, photo) {
+        if (createPromotionDto.referentialIds && typeof createPromotionDto.referentialIds === 'string') {
+            createPromotionDto.referentialIds = createPromotionDto.referentialIds
+                .split(',')
+                .map(id => id.trim())
+                .filter(Boolean);
+        }
+        return this.promotionsService.create(createPromotionDto, photo);
     }
     async findAll() {
         return this.promotionsService.findAll();
@@ -50,9 +56,14 @@ let PromotionsController = PromotionsController_1 = class PromotionsController {
 exports.PromotionsController = PromotionsController;
 __decorate([
     (0, common_1.Post)(),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('photoFile')),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('photo')),
     __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.UploadedFile)()),
+    __param(1, (0, common_1.UploadedFile)(new common_1.ParseFilePipe({
+        validators: [
+            new common_1.FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+        ],
+        fileIsRequired: false,
+    }))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [create_promotion_dto_1.CreatePromotionDto, Object]),
     __metadata("design:returntype", Promise)

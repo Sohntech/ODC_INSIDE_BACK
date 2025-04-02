@@ -17,4 +17,5 @@ export declare class EventsService {
     update(id: string, data: Partial<Event>): Promise<Event>;
     getUpcomingEvents(): Promise<Event[]>;
     getEventsByPromotion(promotionId: string): Promise<Event[]>;
+    delete(id: string): Promise<void>;
 }

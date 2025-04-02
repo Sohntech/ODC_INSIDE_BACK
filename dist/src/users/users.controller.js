@@ -17,7 +17,6 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const users_service_1 = require("./users.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
-const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const client_1 = require("@prisma/client");
 let UsersController = class UsersController {
@@ -29,6 +28,17 @@ let UsersController = class UsersController {
     }
     async update(id, data) {
         return this.usersService.update(id, data);
+    }
+    async getUserPhoto(email) {
+        return this.usersService.getUserPhotoByEmail(email);
+    }
+    async getUserByEmail(email) {
+        const user = await this.usersService.findByEmail(email);
+        if (!user) {
+            throw new common_1.NotFoundException(`User with email ${email} not found`);
+        }
+        const details = await this.usersService.getUserDetailsByRole(user);
+        return { ...user, details };
     }
 };
 exports.UsersController = UsersController;
@@ -51,10 +61,26 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "update", null);
+__decorate([
+    (0, common_1.Get)('photo/:email'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get user photo URL by email' }),
+    __param(0, (0, common_1.Param)('email')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getUserPhoto", null);
+__decorate([
+    (0, common_1.Get)('email/:email'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get user by email with details' }),
+    __param(0, (0, common_1.Param)('email')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getUserByEmail", null);
 exports.UsersController = UsersController = __decorate([
     (0, swagger_1.ApiTags)('users'),
     (0, common_1.Controller)('users'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [users_service_1.UsersService])
 ], UsersController);

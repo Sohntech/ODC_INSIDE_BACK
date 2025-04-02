@@ -88,4 +88,10 @@ export class EventsService {
       },
     });
   }
+
+  async delete(id: string): Promise<void> {
+    const event = await this.findOne(id);
+    await this.prisma.event.delete({ where: { id } });
+  }
+  
 }

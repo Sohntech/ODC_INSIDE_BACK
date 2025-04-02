@@ -11,4 +11,17 @@ export declare class UsersService {
         role: UserRole;
     }): Promise<User>;
     update(id: string, data: Partial<User>): Promise<User>;
+    getUserPhotoByEmail(email: string): Promise<{
+        photoUrl: string | null;
+    }>;
+    getUserDetailsByRole(user: User): Promise<{
+        id: string;
+        firstName: string;
+        lastName: string;
+        phone: string | null;
+        photoUrl: string | null;
+        userId: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
 }

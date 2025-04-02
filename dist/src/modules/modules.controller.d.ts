@@ -115,8 +115,8 @@ export declare class ModulesController {
         learnerId: string;
         createdAt: Date;
         updatedAt: Date;
-        comment: string | null;
         value: number;
+        comment: string | null;
         moduleId: string;
     }>;
     updateGrade(gradeId: string, data: {
@@ -158,8 +158,8 @@ export declare class ModulesController {
         learnerId: string;
         createdAt: Date;
         updatedAt: Date;
-        comment: string | null;
         value: number;
+        comment: string | null;
         moduleId: string;
     }>;
 }

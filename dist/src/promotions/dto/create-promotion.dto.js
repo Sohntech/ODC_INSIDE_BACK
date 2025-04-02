@@ -32,15 +32,16 @@ __decorate([
     __metadata("design:type", Date)
 ], CreatePromotionDto.prototype, "endDate", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ description: 'Array of referential IDs' }),
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Comma-separated referential IDs' }),
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Transform)(({ value }) => {
+        if (!value)
+            return [];
         if (typeof value === 'string') {
-            return JSON.parse(value.replace(/\s/g, ''));
+            return value.split(',').map(id => id.trim()).filter(Boolean);
         }
         return value;
     }),
-    (0, class_validator_1.IsArray)(),
-    __metadata("design:type", Array)
+    __metadata("design:type", Object)
 ], CreatePromotionDto.prototype, "referentialIds", void 0);
 //# sourceMappingURL=create-promotion.dto.js.map

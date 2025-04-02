@@ -82,6 +82,10 @@ let EventsService = class EventsService {
             },
         });
     }
+    async delete(id) {
+        const event = await this.findOne(id);
+        await this.prisma.event.delete({ where: { id } });
+    }
 };
 exports.EventsService = EventsService;
 exports.EventsService = EventsService = __decorate([

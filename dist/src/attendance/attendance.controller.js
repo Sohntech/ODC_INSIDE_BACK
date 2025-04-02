@@ -56,6 +56,15 @@ let AttendanceController = AttendanceController_1 = class AttendanceController {
     async getLatestScans() {
         return this.attendanceService.getLatestScans();
     }
+    async getDailyStats(date) {
+        return this.attendanceService.getDailyStats(date);
+    }
+    async getMonthlyStats(year, month) {
+        return this.attendanceService.getMonthlyStats(parseInt(year, 10), parseInt(month, 10));
+    }
+    async getYearlyStats(year) {
+        return this.attendanceService.getYearlyStats(parseInt(year, 10));
+    }
 };
 exports.AttendanceController = AttendanceController;
 __decorate([
@@ -108,6 +117,28 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "getLatestScans", null);
+__decorate([
+    (0, common_1.Get)('stats/daily'),
+    __param(0, (0, common_1.Query)('date')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendanceController.prototype, "getDailyStats", null);
+__decorate([
+    (0, common_1.Get)('stats/monthly'),
+    __param(0, (0, common_1.Query)('year')),
+    __param(1, (0, common_1.Query)('month')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], AttendanceController.prototype, "getMonthlyStats", null);
+__decorate([
+    (0, common_1.Get)('stats/yearly'),
+    __param(0, (0, common_1.Query)('year')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendanceController.prototype, "getYearlyStats", null);
 exports.AttendanceController = AttendanceController = AttendanceController_1 = __decorate([
     (0, swagger_1.ApiTags)('attendance'),
     (0, common_1.Controller)('attendance'),
