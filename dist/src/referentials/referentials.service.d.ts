@@ -21,21 +21,21 @@ export declare class ReferentialsService {
     }>;
     assignToPromotion(referentialIds: string[], promotionId: string): Promise<{
         referentials: {
+            name: string;
             id: string;
+            photoUrl: string | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
-            photoUrl: string | null;
             description: string | null;
             capacity: number;
         }[];
     } & {
+        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.PromotionStatus;
+        photoUrl: string | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
-        photoUrl: string | null;
+        status: import(".prisma/client").$Enums.PromotionStatus;
         startDate: Date;
         endDate: Date;
     }>;

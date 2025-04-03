@@ -4,11 +4,11 @@ export declare class MealsController {
     constructor(mealsService: MealsService);
     scanMeal(learnerId: string, type: string): Promise<{
         id: string;
-        date: Date;
-        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
         type: string;
+        learnerId: string;
+        date: Date;
     }>;
     getDailyStats(): Promise<{
         date: Date;
@@ -24,55 +24,57 @@ export declare class MealsController {
     getLearnerMealHistory(learnerId: string): Promise<({
         learner: {
             id: string;
-            status: import(".prisma/client").$Enums.LearnerStatus;
-            createdAt: Date;
-            updatedAt: Date;
+            matricule: string;
             firstName: string;
             lastName: string;
-            address: string | null;
-            gender: import(".prisma/client").$Enums.Gender;
-            birthDate: Date;
-            birthPlace: string;
             phone: string;
             photoUrl: string | null;
             qrCode: string;
             userId: string;
             refId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            address: string | null;
+            gender: import(".prisma/client").$Enums.Gender;
+            birthDate: Date;
+            birthPlace: string;
+            status: import(".prisma/client").$Enums.LearnerStatus;
             promotionId: string;
         };
     } & {
         id: string;
-        date: Date;
-        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
         type: string;
+        learnerId: string;
+        date: Date;
     })[]>;
     getLatestScans(): Promise<({
         learner: {
             id: string;
-            status: import(".prisma/client").$Enums.LearnerStatus;
-            createdAt: Date;
-            updatedAt: Date;
+            matricule: string;
             firstName: string;
             lastName: string;
-            address: string | null;
-            gender: import(".prisma/client").$Enums.Gender;
-            birthDate: Date;
-            birthPlace: string;
             phone: string;
             photoUrl: string | null;
             qrCode: string;
             userId: string;
             refId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            address: string | null;
+            gender: import(".prisma/client").$Enums.Gender;
+            birthDate: Date;
+            birthPlace: string;
+            status: import(".prisma/client").$Enums.LearnerStatus;
             promotionId: string;
         };
     } & {
         id: string;
-        date: Date;
-        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
         type: string;
+        learnerId: string;
+        date: Date;
     })[]>;
 }

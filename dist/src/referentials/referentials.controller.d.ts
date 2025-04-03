@@ -12,11 +12,11 @@ export declare class ReferentialsController {
     private readonly logger;
     constructor(referentialsService: ReferentialsService, cloudinaryService: CloudinaryService);
     create(formData: any, photoFile?: Express.Multer.File): Promise<{
+        name: string;
         id: string;
+        photoUrl: string | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
-        photoUrl: string | null;
         description: string | null;
         capacity: number;
     }>;
@@ -25,39 +25,39 @@ export declare class ReferentialsController {
         promotionId: string;
     }): Promise<{
         referentials: {
+            name: string;
             id: string;
+            photoUrl: string | null;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
-            photoUrl: string | null;
             description: string | null;
             capacity: number;
         }[];
     } & {
+        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.PromotionStatus;
+        photoUrl: string | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
-        photoUrl: string | null;
+        status: import(".prisma/client").$Enums.PromotionStatus;
         startDate: Date;
         endDate: Date;
     }>;
     findAll(): Promise<{
+        name: string;
         id: string;
+        photoUrl: string | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
-        photoUrl: string | null;
         description: string | null;
         capacity: number;
     }[]>;
     findOne(id: string): Promise<{
+        name: string;
         id: string;
+        photoUrl: string | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
-        photoUrl: string | null;
         description: string | null;
         capacity: number;
     }>;
@@ -69,11 +69,11 @@ export declare class ReferentialsController {
         availableSpots: number;
     }>;
     update(id: string, data: Partial<CreateReferentialDto>): Promise<{
+        name: string;
         id: string;
+        photoUrl: string | null;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
-        photoUrl: string | null;
         description: string | null;
         capacity: number;
     }>;

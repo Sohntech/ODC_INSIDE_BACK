@@ -16,6 +16,8 @@ const prisma_service_1 = require("../prisma/prisma.service");
 const cloudinary_service_1 = require("../cloudinary/cloudinary.service");
 const client_1 = require("@prisma/client");
 const auth_utils_1 = require("../utils/auth.utils");
+const matricule_utils_1 = require("../utils/matricule.utils");
+const QRCode = require("qrcode");
 let CoachesService = CoachesService_1 = class CoachesService {
     constructor(prisma, cloudinary) {
         this.prisma = prisma;
@@ -54,13 +56,40 @@ let CoachesService = CoachesService_1 = class CoachesService {
                 if (existingCoach) {
                     throw new common_1.ConflictException('Un coach avec cet email ou ce téléphone existe déjà');
                 }
+                const referential = createCoachDto.refId ?
+                    await prisma.referential.findUnique({ where: { id: createCoachDto.refId } })
+                    : null;
+                const matricule = await matricule_utils_1.MatriculeUtils.generateCoachMatricule(prisma, createCoachDto.firstName, createCoachDto.lastName, referential?.name);
+                let qrCodeUrl;
+                try {
+                    const qrCodeBuffer = await QRCode.toBuffer(matricule);
+                    const qrCodeFile = {
+                        fieldname: 'qrCode',
+                        originalname: 'qrcode.png',
+                        encoding: '7bit',
+                        mimetype: 'image/png',
+                        buffer: qrCodeBuffer,
+                        size: qrCodeBuffer.length,
+                        stream: null,
+                        destination: '',
+                        filename: 'qrcode.png',
+                        path: '',
+                    };
+                    const qrCodeResult = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
+                    qrCodeUrl = qrCodeResult.url;
+                }
+                catch (error) {
+                    this.logger.error('Failed to generate or upload QR code:', error);
+                }
                 const password = auth_utils_1.AuthUtils.generatePassword();
                 const hashedPassword = await auth_utils_1.AuthUtils.hashPassword(password);
                 const coachData = {
+                    matricule,
                     firstName: createCoachDto.firstName,
                     lastName: createCoachDto.lastName,
                     phone: createCoachDto.phone,
                     photoUrl,
+                    qrCode: qrCodeUrl,
                     ...(createCoachDto.refId && {
                         referential: {
                             connect: { id: createCoachDto.refId }
@@ -84,6 +113,8 @@ let CoachesService = CoachesService_1 = class CoachesService {
                 });
                 await auth_utils_1.AuthUtils.sendPasswordEmail(createCoachDto.email, password, 'Coach');
                 return newCoach;
+            }, {
+                timeout: 20000
             });
             this.logger.log('Coach created successfully:', coach.id);
             return coach;

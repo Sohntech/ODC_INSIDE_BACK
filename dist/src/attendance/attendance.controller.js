@@ -30,11 +30,11 @@ let AttendanceController = AttendanceController_1 = class AttendanceController {
         this.cloudinaryService = cloudinaryService;
         this.logger = new common_1.Logger(AttendanceController_1.name);
     }
-    async scanLearner(id) {
-        return this.attendanceService.scanLearner(id);
+    async scanLearner(body) {
+        return this.attendanceService.scanLearner(body.matricule);
     }
-    async scanCoach(id) {
-        return this.attendanceService.scanCoach(id);
+    async scanCoach(body) {
+        return this.attendanceService.scanCoach(body.matricule);
     }
     async submitJustification(id, justification, document) {
         let documentUrl;
@@ -68,21 +68,25 @@ let AttendanceController = AttendanceController_1 = class AttendanceController {
 };
 exports.AttendanceController = AttendanceController;
 __decorate([
-    (0, common_1.Post)('learner/:id/scan'),
-    (0, roles_decorator_1.Roles)(client_1.UserRole.VIGIL),
-    (0, swagger_1.ApiOperation)({ summary: 'Scanner un apprenant' }),
-    __param(0, (0, common_1.Param)('id')),
+    (0, common_1.Post)('scan/learner'),
+    (0, roles_decorator_1.Roles)('VIGIL'),
+    (0, swagger_1.ApiOperation)({ summary: 'Scan a learner attendance' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Attendance recorded successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Learner not found' }),
+    __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "scanLearner", null);
 __decorate([
-    (0, common_1.Post)('coach/:id/scan'),
-    (0, roles_decorator_1.Roles)(client_1.UserRole.VIGIL),
-    (0, swagger_1.ApiOperation)({ summary: 'Scanner un coach' }),
-    __param(0, (0, common_1.Param)('id')),
+    (0, common_1.Post)('scan/coach'),
+    (0, roles_decorator_1.Roles)('VIGIL'),
+    (0, swagger_1.ApiOperation)({ summary: 'Scan a coach attendance' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Attendance recorded successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Coach not found' }),
+    __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "scanCoach", null);
 __decorate([

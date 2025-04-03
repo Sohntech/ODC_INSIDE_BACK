@@ -19,39 +19,40 @@ export declare class ModulesService {
     }): Promise<{
         learner: {
             id: string;
-            status: import(".prisma/client").$Enums.LearnerStatus;
-            createdAt: Date;
-            updatedAt: Date;
+            matricule: string;
             firstName: string;
             lastName: string;
-            address: string | null;
-            gender: import(".prisma/client").$Enums.Gender;
-            birthDate: Date;
-            birthPlace: string;
             phone: string;
             photoUrl: string | null;
             qrCode: string;
             userId: string;
             refId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            address: string | null;
+            gender: import(".prisma/client").$Enums.Gender;
+            birthDate: Date;
+            birthPlace: string;
+            status: import(".prisma/client").$Enums.LearnerStatus;
             promotionId: string;
         };
         module: {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
+            id: string;
             photoUrl: string | null;
             refId: string;
-            coachId: string;
+            createdAt: Date;
+            updatedAt: Date;
             description: string | null;
             startDate: Date;
             endDate: Date;
+            coachId: string;
         };
     } & {
         id: string;
-        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
+        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;
@@ -62,39 +63,40 @@ export declare class ModulesService {
     }): Promise<{
         learner: {
             id: string;
-            status: import(".prisma/client").$Enums.LearnerStatus;
-            createdAt: Date;
-            updatedAt: Date;
+            matricule: string;
             firstName: string;
             lastName: string;
-            address: string | null;
-            gender: import(".prisma/client").$Enums.Gender;
-            birthDate: Date;
-            birthPlace: string;
             phone: string;
             photoUrl: string | null;
             qrCode: string;
             userId: string;
             refId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            address: string | null;
+            gender: import(".prisma/client").$Enums.Gender;
+            birthDate: Date;
+            birthPlace: string;
+            status: import(".prisma/client").$Enums.LearnerStatus;
             promotionId: string;
         };
         module: {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
+            id: string;
             photoUrl: string | null;
             refId: string;
-            coachId: string;
+            createdAt: Date;
+            updatedAt: Date;
             description: string | null;
             startDate: Date;
             endDate: Date;
+            coachId: string;
         };
     } & {
         id: string;
-        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
+        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;

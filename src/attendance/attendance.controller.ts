@@ -35,18 +35,26 @@ export class AttendanceController {
     private readonly cloudinaryService: CloudinaryService
   ) {}
 
-  @Post('learner/:id/scan')
-  @Roles(UserRole.VIGIL)
-  @ApiOperation({ summary: 'Scanner un apprenant' })
-  async scanLearner(@Param('id') id: string) {
-    return this.attendanceService.scanLearner(id);
+  @Post('scan/learner')
+  @Roles('VIGIL')
+  @ApiOperation({ summary: 'Scan a learner attendance' })
+  @ApiResponse({ status: 201, description: 'Attendance recorded successfully' })
+  @ApiResponse({ status: 404, description: 'Learner not found' })
+  async scanLearner(
+    @Body() body: { matricule: string }
+  ) {
+    return this.attendanceService.scanLearner(body.matricule);
   }
 
-  @Post('coach/:id/scan')
-  @Roles(UserRole.VIGIL)
-  @ApiOperation({ summary: 'Scanner un coach' })
-  async scanCoach(@Param('id') id: string) {
-    return this.attendanceService.scanCoach(id);
+  @Post('scan/coach')
+  @Roles('VIGIL')
+  @ApiOperation({ summary: 'Scan a coach attendance' })
+  @ApiResponse({ status: 201, description: 'Attendance recorded successfully' })
+  @ApiResponse({ status: 404, description: 'Coach not found' })
+  async scanCoach(
+    @Body() body: { matricule: string }
+  ) {
+    return this.attendanceService.scanCoach(body.matricule);
   }
 
   @Post('absence/:id/justify')

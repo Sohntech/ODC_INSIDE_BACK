@@ -6,9 +6,9 @@ import { Meal } from '@prisma/client';
 export class MealsService {
   constructor(private prisma: PrismaService) {}
 
-  async scanMeal(learnerId: string, type: string): Promise<Meal> {
+  async findLearnerByMatricule(matricule: string) {
     const learner = await this.prisma.learner.findUnique({
-      where: { id: learnerId },
+      where: { matricule },
       include: {
         user: true,
       },
@@ -18,12 +18,18 @@ export class MealsService {
       throw new NotFoundException('Apprenant non trouvé');
     }
 
+    return learner;
+  }
+
+  async scanMeal(matricule: string, type: string): Promise<Meal> {
+    const learner = await this.findLearnerByMatricule(matricule);
+
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const existingMeal = await this.prisma.meal.findFirst({
       where: {
-        learnerId,
+        learnerId: learner.id,
         date: today,
         type,
       },
@@ -37,7 +43,7 @@ export class MealsService {
       data: {
         date: today,
         type,
-        learnerId,
+        learnerId: learner.id,
       },
       include: {
         learner: true,

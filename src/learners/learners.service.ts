@@ -1,13 +1,14 @@
 import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
-import { Learner, LearnerStatus } from '@prisma/client';
+import { Gender, Learner, LearnerStatus, PrismaClient } from '@prisma/client';
 import * as QRCode from 'qrcode';
 import * as fs from 'fs';
 import { File } from 'formidable';
 import { AuthUtils } from '../utils/auth.utils';
 import { CreateLearnerDto } from './dto/create-learner.dto';
 import { ReplaceLearnerDto, UpdateStatusDto } from './dto/update-status.dto';
+import { MatriculeUtils } from '../utils/matricule.utils';
 
 @Injectable()
 export class LearnersService {
@@ -19,50 +20,25 @@ export class LearnersService {
   ) {}
 
   async create(createLearnerDto: CreateLearnerDto, photoFile?: Express.Multer.File): Promise<Learner> {
-    return this.prisma.$transaction(async (prisma) => {
-      // Add this logging
-      this.logger.log('Received photo file:', {
-        exists: !!photoFile,
-        details: photoFile ? {
-          fieldname: photoFile.fieldname,
-          originalname: photoFile.originalname,
-          size: photoFile.size,
-          mimetype: photoFile.mimetype
-        } : null
-      });
+    // Handle file uploads before transaction
+    let photoUrl: string | undefined;
+    let qrCodeUrl: string | undefined;
 
-      this.logger.log('Creating learner with data:', {
-        firstName: createLearnerDto.firstName,
-        lastName: createLearnerDto.lastName,
-        email: createLearnerDto.email,
-        refId: createLearnerDto.refId,
-        promotionId: createLearnerDto.promotionId
-      });
+    // Generate matricule first (outside transaction to prepare QR code)
+    const referential = createLearnerDto.refId ? 
+      await this.prisma.referential.findUnique({ where: { id: createLearnerDto.refId } }) 
+      : null;
 
-      const existingLearner = await prisma.learner.findFirst({
-        where: {
-          OR: [
-            { phone: createLearnerDto.phone },
-            {
-              user: {
-                email: createLearnerDto.email,
-              },
-            },
-          ],
-        },
-      });
+    const matricule = await MatriculeUtils.generateLearnerMatricule(
+      this.prisma,
+      createLearnerDto.firstName,
+      createLearnerDto.lastName,
+      referential?.name
+    );
 
-      if (existingLearner) {
-        throw new ConflictException(
-          'Un apprenant avec cet email ou ce téléphone existe déjà',
-        );
-      }
-
-      // Generate QR code
-      const qrCodeValue = `${createLearnerDto.firstName}-${createLearnerDto.lastName}-${Date.now()}`;
-      const qrCodeBuffer = await QRCode.toBuffer(qrCodeValue);
-
-      // Create a custom File object
+    // Generate and upload QR code
+    try {
+      const qrCodeBuffer = await QRCode.toBuffer(matricule);
       const qrCodeFile = {
         fieldname: 'qrCode',
         originalname: 'qrcode.png',
@@ -76,125 +52,102 @@ export class LearnersService {
         path: '',
       };
 
-      let qrCodeUrl: string | undefined;
-      
-      // Upload QR code to Cloudinary
-      try {
-        this.logger.log('Attempting to upload QR code to Cloudinary...');
-        const result = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
-        qrCodeUrl = result.url;
-        this.logger.log('Successfully uploaded QR code to Cloudinary:', qrCodeUrl);
-      } catch (error) {
-        this.logger.error('Failed to upload QR code to Cloudinary:', error);
-      }
+      const qrCodeResult = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
+      qrCodeUrl = qrCodeResult.url;
+    } catch (error) {
+      this.logger.error('Failed to generate or upload QR code:', error);
+    }
 
-      let photoUrl: string | undefined;
-      
-      // Process photo if provided
-      if (photoFile) {
-        this.logger.log('Photo file received, processing...');
-        
-        try {
-          // First try Cloudinary upload
-          this.logger.log('Attempting to upload to Cloudinary...');
-          const result = await this.cloudinary.uploadFile(photoFile, 'learners');
-          photoUrl = result.url;
-          this.logger.log('Successfully uploaded to Cloudinary:', photoUrl);
-        } catch (cloudinaryError) {
-          this.logger.error('Cloudinary upload failed:', cloudinaryError);
-          
-          // Fallback to local storage
-          try {
-            this.logger.log('Falling back to local storage...');
-            // Create uploads directory if it doesn't exist
-            if (!fs.existsSync('./uploads/learners')) {
-              fs.mkdirSync('./uploads/learners', { recursive: true });
-            }
-            
-            // Generate unique filename
-            const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-            const extension = photoFile.originalname.split('.').pop();
-            const filename = `${uniquePrefix}.${extension}`;
-            const filepath = `./uploads/learners/${filename}`;
-            
-            // Write the file
-            fs.writeFileSync(filepath, photoFile.buffer);
-            
-            photoUrl = `uploads/learners/${filename}`;
-            this.logger.log(`File saved locally at ${filepath}`);
-          } catch (localError) {
-            this.logger.error('Local storage fallback failed:', localError);
-          }
-        }
+    // Handle photo upload
+    if (photoFile) {
+      try {
+        const result = await this.cloudinary.uploadFile(photoFile, 'learners');
+        photoUrl = result.url;
+      } catch (error) {
+        this.logger.error('Failed to upload photo:', error);
+      }
+    }
+
+    // Start transaction with increased timeout
+    return this.prisma.$transaction(async (prisma) => {
+      const existingLearner = await prisma.learner.findFirst({
+        where: {
+          OR: [
+            { phone: createLearnerDto.phone },
+            { user: { email: createLearnerDto.email } },
+          ],
+        },
+      });
+
+      if (existingLearner) {
+        throw new ConflictException(
+          'Un apprenant avec cet email ou ce téléphone existe déjà',
+        );
       }
 
       // Generate and hash password
       const password = AuthUtils.generatePassword();
       const hashedPassword = await AuthUtils.hashPassword(password);
 
-      // Prepare createData object
-      const createData: any = {
-        firstName: createLearnerDto.firstName,
-        lastName: createLearnerDto.lastName,
-        address: createLearnerDto.address,
-        gender: createLearnerDto.gender,
-        birthDate: createLearnerDto.birthDate,
-        birthPlace: createLearnerDto.birthPlace,
-        phone: createLearnerDto.phone,
-        photoUrl,
-        qrCode: qrCodeUrl,
-        status: createLearnerDto.status || LearnerStatus.ACTIVE,
-        user: {
-          create: {
-            email: createLearnerDto.email,
-            password: hashedPassword, // Use hashed password
-            role: 'APPRENANT',
-          },
-        },
-        tutor: {
-          create: {
-            firstName: createLearnerDto.tutor.firstName,
-            lastName: createLearnerDto.tutor.lastName,
-            phone: createLearnerDto.tutor.phone,
-            email: createLearnerDto.tutor.email,
-            address: createLearnerDto.tutor.address,
-          },
-        },
-        promotion: {
-          connect: {
-            id: createLearnerDto.promotionId
-          }
-        },
-        referential: createLearnerDto.refId ? {
-          connect: {
-            id: createLearnerDto.refId
-          }
-        } : undefined,
-        kit: {
-          create: {
-            laptop: false,
-            charger: false,
-            bag: false,
-            polo: false
-          }
-        }
-      };
-
-      this.logger.log('Creating learner with final data:', createData);
-
       const learner = await prisma.learner.create({
-        data: createData,
+        data: {
+          matricule,
+          firstName: createLearnerDto.firstName,
+          lastName: createLearnerDto.lastName,
+          address: createLearnerDto.address,
+          gender: createLearnerDto.gender as Gender,
+          birthDate: createLearnerDto.birthDate,
+          birthPlace: createLearnerDto.birthPlace,
+          phone: createLearnerDto.phone,
+          photoUrl,
+          qrCode: qrCodeUrl,
+          status: createLearnerDto.status || LearnerStatus.ACTIVE,
+          user: {
+            create: {
+              email: createLearnerDto.email,
+              password: hashedPassword,
+              role: 'APPRENANT',
+            },
+          },
+          tutor: {
+            create: {
+              firstName: createLearnerDto.tutor.firstName,
+              lastName: createLearnerDto.tutor.lastName,
+              phone: createLearnerDto.tutor.phone,
+              email: createLearnerDto.tutor.email,
+              address: createLearnerDto.tutor.address,
+            },
+          },
+          promotion: {
+            connect: {
+              id: createLearnerDto.promotionId
+            }
+          },
+          referential: createLearnerDto.refId ? {
+            connect: {
+              id: createLearnerDto.refId
+            }
+          } : undefined,
+          kit: {
+            create: {
+              laptop: false,
+              charger: false,
+              bag: false,
+              polo: false
+            }
+          }
+        },
         include: {
           user: true,
           promotion: true,
           referential: true,
           tutor: true,
           kit: true,
-          statusHistory: true // Add this to track initial status
-        },
+          statusHistory: true
+        }
       });
 
-      // Create initial status history without previousStatus for new learners
+      // Create initial status history
       await prisma.learnerStatusHistory.create({
         data: {
           learnerId: learner.id,
@@ -204,10 +157,12 @@ export class LearnersService {
         }
       });
 
-      // Send password email
+      // Send password email after transaction
       await AuthUtils.sendPasswordEmail(createLearnerDto.email, password, 'Apprenant');
 
       return learner;
+    }, {
+      timeout: 20000 // Increase timeout to 20 seconds
     });
   }
 

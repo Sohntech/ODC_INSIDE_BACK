@@ -16,9 +16,9 @@ let MealsService = class MealsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async scanMeal(learnerId, type) {
+    async findLearnerByMatricule(matricule) {
         const learner = await this.prisma.learner.findUnique({
-            where: { id: learnerId },
+            where: { matricule },
             include: {
                 user: true,
             },
@@ -26,11 +26,15 @@ let MealsService = class MealsService {
         if (!learner) {
             throw new common_1.NotFoundException('Apprenant non trouvé');
         }
+        return learner;
+    }
+    async scanMeal(matricule, type) {
+        const learner = await this.findLearnerByMatricule(matricule);
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const existingMeal = await this.prisma.meal.findFirst({
             where: {
-                learnerId,
+                learnerId: learner.id,
                 date: today,
                 type,
             },
@@ -42,7 +46,7 @@ let MealsService = class MealsService {
             data: {
                 date: today,
                 type,
-                learnerId,
+                learnerId: learner.id,
             },
             include: {
                 learner: true,

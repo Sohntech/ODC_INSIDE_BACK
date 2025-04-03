@@ -20,12 +20,12 @@ export declare class LearnersService {
         polo?: boolean;
     }): Promise<Learner>;
     uploadDocument(id: string, file: Express.Multer.File, type: string, name: string): Promise<{
+        name: string;
         id: string;
-        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         type: string;
+        learnerId: string;
         url: string;
     }>;
     getAttendanceStats(id: string): Promise<{
@@ -41,10 +41,10 @@ export declare class LearnersService {
     getWaitingList(promotionId?: string): Promise<Learner[]>;
     getStatusHistory(learnerId: string): Promise<{
         id: string;
-        date: Date;
         learnerId: string;
         reason: string | null;
         previousStatus: import(".prisma/client").$Enums.LearnerStatus | null;
         newStatus: import(".prisma/client").$Enums.LearnerStatus;
+        date: Date;
     }[]>;
 }

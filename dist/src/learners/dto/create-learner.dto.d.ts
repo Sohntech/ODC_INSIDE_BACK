@@ -9,15 +9,20 @@ export declare class CreateTutorDto {
 export declare class CreateLearnerDto {
     firstName: string;
     lastName: string;
-    address?: string;
-    gender: 'MALE' | 'FEMALE';
+    email: string;
+    phone: string;
+    address: string;
+    gender: string;
     birthDate: Date;
     birthPlace: string;
-    phone: string;
-    email: string;
     refId?: string;
     promotionId: string;
-    tutor: CreateTutorDto;
-    addToWaitlist?: boolean;
     status?: LearnerStatus;
+    tutor: {
+        firstName: string;
+        lastName: string;
+        phone: string;
+        email: string;
+        address: string;
+    };
 }

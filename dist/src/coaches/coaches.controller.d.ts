@@ -5,47 +5,55 @@ export declare class CoachesController {
     constructor(coachesService: CoachesService);
     create(createCoachDto: CreateCoachDto, photoFile?: Express.Multer.File): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        matricule: string;
         firstName: string;
         lastName: string;
         phone: string | null;
         photoUrl: string | null;
+        qrCode: string | null;
         userId: string;
         refId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     findAll(): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        matricule: string;
         firstName: string;
         lastName: string;
         phone: string | null;
         photoUrl: string | null;
+        qrCode: string | null;
         userId: string;
         refId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }[]>;
     findOne(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        matricule: string;
         firstName: string;
         lastName: string;
         phone: string | null;
         photoUrl: string | null;
+        qrCode: string | null;
         userId: string;
         refId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     update(id: string, data: any): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        matricule: string;
         firstName: string;
         lastName: string;
         phone: string | null;
         photoUrl: string | null;
+        qrCode: string | null;
         userId: string;
         refId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     getAttendanceStats(id: string): Promise<{
         totalDays: number;

@@ -7,9 +7,9 @@ import { AbsenceStatus, LearnerAttendance } from '@prisma/client';
 export class AttendanceService {
   constructor(private prisma: PrismaService) {}
 
-  async scanLearner(learnerId: string): Promise<any> {
+  async findLearnerByMatricule(matricule: string) {
     const learner = await this.prisma.learner.findUnique({
-      where: { id: learnerId },
+      where: { matricule },
       include: {
         user: true,
         referential: true,
@@ -20,13 +20,35 @@ export class AttendanceService {
       throw new NotFoundException('Apprenant non trouvé');
     }
 
+    return learner;
+  }
+
+  async findCoachByMatricule(matricule: string) {
+    const coach = await this.prisma.coach.findUnique({
+      where: { matricule },
+      include: {
+        user: true,
+        referential: true,
+      },
+    });
+
+    if (!coach) {
+      throw new NotFoundException('Coach non trouvé');
+    }
+
+    return coach;
+  }
+
+  async scanLearner(matricule: string): Promise<any> {
+    const learner = await this.findLearnerByMatricule(matricule);
+
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const cutoffTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 8, 15);
 
     const existingAttendance = await this.prisma.learnerAttendance.findFirst({
       where: {
-        learnerId,
+        learnerId: learner.id,
         date: today,
       },
     });
@@ -53,7 +75,7 @@ export class AttendanceService {
         isPresent: true,
         scanTime: now,
         isLate,
-        learnerId,
+        learnerId: learner.id,
       },
       include: {
         learner: true,
@@ -61,18 +83,8 @@ export class AttendanceService {
     });
   }
 
-  async scanCoach(coachId: string): Promise<any> {
-    const coach = await this.prisma.coach.findUnique({
-      where: { id: coachId },
-      include: {
-        user: true,
-        referential: true,
-      },
-    });
-
-    if (!coach) {
-      throw new NotFoundException('Coach non trouvé');
-    }
+  async scanCoach(matricule: string): Promise<any> {
+    const coach = await this.findCoachByMatricule(matricule);
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -80,7 +92,7 @@ export class AttendanceService {
 
     const existingAttendance = await this.prisma.coachAttendance.findFirst({
       where: {
-        coachId,
+        coachId: coach.id,
         date: today,
       },
     });
@@ -107,7 +119,7 @@ export class AttendanceService {
         isPresent: true,
         scanTime: now,
         isLate,
-        coachId,
+        coachId: coach.id,
       },
       include: {
         coach: true,

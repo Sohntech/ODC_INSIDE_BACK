@@ -3,7 +3,35 @@ import { Meal } from '@prisma/client';
 export declare class MealsService {
     private prisma;
     constructor(prisma: PrismaService);
-    scanMeal(learnerId: string, type: string): Promise<Meal>;
+    findLearnerByMatricule(matricule: string): Promise<{
+        user: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            email: string;
+            password: string;
+            role: import(".prisma/client").$Enums.UserRole;
+        };
+    } & {
+        id: string;
+        matricule: string;
+        firstName: string;
+        lastName: string;
+        phone: string;
+        photoUrl: string | null;
+        qrCode: string;
+        userId: string;
+        refId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        address: string | null;
+        gender: import(".prisma/client").$Enums.Gender;
+        birthDate: Date;
+        birthPlace: string;
+        status: import(".prisma/client").$Enums.LearnerStatus;
+        promotionId: string;
+    }>;
+    scanMeal(matricule: string, type: string): Promise<Meal>;
     getDailyStats(): Promise<{
         date: Date;
         breakfast: number;
@@ -18,55 +46,57 @@ export declare class MealsService {
     getLearnerMealHistory(learnerId: string): Promise<({
         learner: {
             id: string;
-            status: import(".prisma/client").$Enums.LearnerStatus;
-            createdAt: Date;
-            updatedAt: Date;
+            matricule: string;
             firstName: string;
             lastName: string;
-            address: string | null;
-            gender: import(".prisma/client").$Enums.Gender;
-            birthDate: Date;
-            birthPlace: string;
             phone: string;
             photoUrl: string | null;
             qrCode: string;
             userId: string;
             refId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            address: string | null;
+            gender: import(".prisma/client").$Enums.Gender;
+            birthDate: Date;
+            birthPlace: string;
+            status: import(".prisma/client").$Enums.LearnerStatus;
             promotionId: string;
         };
     } & {
         id: string;
-        date: Date;
-        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
         type: string;
+        learnerId: string;
+        date: Date;
     })[]>;
     getLatestScans(): Promise<({
         learner: {
             id: string;
-            status: import(".prisma/client").$Enums.LearnerStatus;
-            createdAt: Date;
-            updatedAt: Date;
+            matricule: string;
             firstName: string;
             lastName: string;
-            address: string | null;
-            gender: import(".prisma/client").$Enums.Gender;
-            birthDate: Date;
-            birthPlace: string;
             phone: string;
             photoUrl: string | null;
             qrCode: string;
             userId: string;
             refId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            address: string | null;
+            gender: import(".prisma/client").$Enums.Gender;
+            birthDate: Date;
+            birthPlace: string;
+            status: import(".prisma/client").$Enums.LearnerStatus;
             promotionId: string;
         };
     } & {
         id: string;
-        date: Date;
-        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
         type: string;
+        learnerId: string;
+        date: Date;
     })[]>;
 }

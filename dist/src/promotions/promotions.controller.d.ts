@@ -7,42 +7,42 @@ export declare class PromotionsController {
     create(createPromotionDto: CreatePromotionDto, photo?: Express.Multer.File): Promise<{
         name: string;
         id: string;
-        startDate: Date;
-        endDate: Date;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
+        status: import(".prisma/client").$Enums.PromotionStatus;
+        startDate: Date;
+        endDate: Date;
     }>;
     findAll(): Promise<{
         name: string;
         id: string;
-        startDate: Date;
-        endDate: Date;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
+        status: import(".prisma/client").$Enums.PromotionStatus;
+        startDate: Date;
+        endDate: Date;
     }[]>;
     getActivePromotion(): Promise<{
         name: string;
         id: string;
-        startDate: Date;
-        endDate: Date;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
+        status: import(".prisma/client").$Enums.PromotionStatus;
+        startDate: Date;
+        endDate: Date;
     }>;
     findOne(id: string): Promise<{
         name: string;
         id: string;
-        startDate: Date;
-        endDate: Date;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
+        status: import(".prisma/client").$Enums.PromotionStatus;
+        startDate: Date;
+        endDate: Date;
     }>;
     getStatistics(id: string): Promise<{
         totalLearners: number;
@@ -53,11 +53,11 @@ export declare class PromotionsController {
     update(id: string, data: any): Promise<{
         name: string;
         id: string;
-        startDate: Date;
-        endDate: Date;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
+        status: import(".prisma/client").$Enums.PromotionStatus;
+        startDate: Date;
+        endDate: Date;
     }>;
 }

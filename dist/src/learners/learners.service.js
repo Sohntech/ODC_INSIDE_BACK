@@ -18,6 +18,7 @@ const client_1 = require("@prisma/client");
 const QRCode = require("qrcode");
 const fs = require("fs");
 const auth_utils_1 = require("../utils/auth.utils");
+const matricule_utils_1 = require("../utils/matricule.utils");
 let LearnersService = LearnersService_1 = class LearnersService {
     constructor(prisma, cloudinary) {
         this.prisma = prisma;
@@ -25,40 +26,14 @@ let LearnersService = LearnersService_1 = class LearnersService {
         this.logger = new common_1.Logger(LearnersService_1.name);
     }
     async create(createLearnerDto, photoFile) {
-        return this.prisma.$transaction(async (prisma) => {
-            this.logger.log('Received photo file:', {
-                exists: !!photoFile,
-                details: photoFile ? {
-                    fieldname: photoFile.fieldname,
-                    originalname: photoFile.originalname,
-                    size: photoFile.size,
-                    mimetype: photoFile.mimetype
-                } : null
-            });
-            this.logger.log('Creating learner with data:', {
-                firstName: createLearnerDto.firstName,
-                lastName: createLearnerDto.lastName,
-                email: createLearnerDto.email,
-                refId: createLearnerDto.refId,
-                promotionId: createLearnerDto.promotionId
-            });
-            const existingLearner = await prisma.learner.findFirst({
-                where: {
-                    OR: [
-                        { phone: createLearnerDto.phone },
-                        {
-                            user: {
-                                email: createLearnerDto.email,
-                            },
-                        },
-                    ],
-                },
-            });
-            if (existingLearner) {
-                throw new common_1.ConflictException('Un apprenant avec cet email ou ce téléphone existe déjà');
-            }
-            const qrCodeValue = `${createLearnerDto.firstName}-${createLearnerDto.lastName}-${Date.now()}`;
-            const qrCodeBuffer = await QRCode.toBuffer(qrCodeValue);
+        let photoUrl;
+        let qrCodeUrl;
+        const referential = createLearnerDto.refId ?
+            await this.prisma.referential.findUnique({ where: { id: createLearnerDto.refId } })
+            : null;
+        const matricule = await matricule_utils_1.MatriculeUtils.generateLearnerMatricule(this.prisma, createLearnerDto.firstName, createLearnerDto.lastName, referential?.name);
+        try {
+            const qrCodeBuffer = await QRCode.toBuffer(matricule);
             const qrCodeFile = {
                 fieldname: 'qrCode',
                 originalname: 'qrcode.png',
@@ -71,96 +46,83 @@ let LearnersService = LearnersService_1 = class LearnersService {
                 filename: 'qrcode.png',
                 path: '',
             };
-            let qrCodeUrl;
+            const qrCodeResult = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
+            qrCodeUrl = qrCodeResult.url;
+        }
+        catch (error) {
+            this.logger.error('Failed to generate or upload QR code:', error);
+        }
+        if (photoFile) {
             try {
-                this.logger.log('Attempting to upload QR code to Cloudinary...');
-                const result = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
-                qrCodeUrl = result.url;
-                this.logger.log('Successfully uploaded QR code to Cloudinary:', qrCodeUrl);
+                const result = await this.cloudinary.uploadFile(photoFile, 'learners');
+                photoUrl = result.url;
             }
             catch (error) {
-                this.logger.error('Failed to upload QR code to Cloudinary:', error);
+                this.logger.error('Failed to upload photo:', error);
             }
-            let photoUrl;
-            if (photoFile) {
-                this.logger.log('Photo file received, processing...');
-                try {
-                    this.logger.log('Attempting to upload to Cloudinary...');
-                    const result = await this.cloudinary.uploadFile(photoFile, 'learners');
-                    photoUrl = result.url;
-                    this.logger.log('Successfully uploaded to Cloudinary:', photoUrl);
-                }
-                catch (cloudinaryError) {
-                    this.logger.error('Cloudinary upload failed:', cloudinaryError);
-                    try {
-                        this.logger.log('Falling back to local storage...');
-                        if (!fs.existsSync('./uploads/learners')) {
-                            fs.mkdirSync('./uploads/learners', { recursive: true });
-                        }
-                        const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-                        const extension = photoFile.originalname.split('.').pop();
-                        const filename = `${uniquePrefix}.${extension}`;
-                        const filepath = `./uploads/learners/${filename}`;
-                        fs.writeFileSync(filepath, photoFile.buffer);
-                        photoUrl = `uploads/learners/${filename}`;
-                        this.logger.log(`File saved locally at ${filepath}`);
-                    }
-                    catch (localError) {
-                        this.logger.error('Local storage fallback failed:', localError);
-                    }
-                }
+        }
+        return this.prisma.$transaction(async (prisma) => {
+            const existingLearner = await prisma.learner.findFirst({
+                where: {
+                    OR: [
+                        { phone: createLearnerDto.phone },
+                        { user: { email: createLearnerDto.email } },
+                    ],
+                },
+            });
+            if (existingLearner) {
+                throw new common_1.ConflictException('Un apprenant avec cet email ou ce téléphone existe déjà');
             }
             const password = auth_utils_1.AuthUtils.generatePassword();
             const hashedPassword = await auth_utils_1.AuthUtils.hashPassword(password);
-            const createData = {
-                firstName: createLearnerDto.firstName,
-                lastName: createLearnerDto.lastName,
-                address: createLearnerDto.address,
-                gender: createLearnerDto.gender,
-                birthDate: createLearnerDto.birthDate,
-                birthPlace: createLearnerDto.birthPlace,
-                phone: createLearnerDto.phone,
-                photoUrl,
-                qrCode: qrCodeUrl,
-                status: createLearnerDto.status || client_1.LearnerStatus.ACTIVE,
-                user: {
-                    create: {
-                        email: createLearnerDto.email,
-                        password: hashedPassword,
-                        role: 'APPRENANT',
-                    },
-                },
-                tutor: {
-                    create: {
-                        firstName: createLearnerDto.tutor.firstName,
-                        lastName: createLearnerDto.tutor.lastName,
-                        phone: createLearnerDto.tutor.phone,
-                        email: createLearnerDto.tutor.email,
-                        address: createLearnerDto.tutor.address,
-                    },
-                },
-                promotion: {
-                    connect: {
-                        id: createLearnerDto.promotionId
-                    }
-                },
-                referential: createLearnerDto.refId ? {
-                    connect: {
-                        id: createLearnerDto.refId
-                    }
-                } : undefined,
-                kit: {
-                    create: {
-                        laptop: false,
-                        charger: false,
-                        bag: false,
-                        polo: false
-                    }
-                }
-            };
-            this.logger.log('Creating learner with final data:', createData);
             const learner = await prisma.learner.create({
-                data: createData,
+                data: {
+                    matricule,
+                    firstName: createLearnerDto.firstName,
+                    lastName: createLearnerDto.lastName,
+                    address: createLearnerDto.address,
+                    gender: createLearnerDto.gender,
+                    birthDate: createLearnerDto.birthDate,
+                    birthPlace: createLearnerDto.birthPlace,
+                    phone: createLearnerDto.phone,
+                    photoUrl,
+                    qrCode: qrCodeUrl,
+                    status: createLearnerDto.status || client_1.LearnerStatus.ACTIVE,
+                    user: {
+                        create: {
+                            email: createLearnerDto.email,
+                            password: hashedPassword,
+                            role: 'APPRENANT',
+                        },
+                    },
+                    tutor: {
+                        create: {
+                            firstName: createLearnerDto.tutor.firstName,
+                            lastName: createLearnerDto.tutor.lastName,
+                            phone: createLearnerDto.tutor.phone,
+                            email: createLearnerDto.tutor.email,
+                            address: createLearnerDto.tutor.address,
+                        },
+                    },
+                    promotion: {
+                        connect: {
+                            id: createLearnerDto.promotionId
+                        }
+                    },
+                    referential: createLearnerDto.refId ? {
+                        connect: {
+                            id: createLearnerDto.refId
+                        }
+                    } : undefined,
+                    kit: {
+                        create: {
+                            laptop: false,
+                            charger: false,
+                            bag: false,
+                            polo: false
+                        }
+                    }
+                },
                 include: {
                     user: true,
                     promotion: true,
@@ -168,7 +130,7 @@ let LearnersService = LearnersService_1 = class LearnersService {
                     tutor: true,
                     kit: true,
                     statusHistory: true
-                },
+                }
             });
             await prisma.learnerStatusHistory.create({
                 data: {
@@ -180,6 +142,8 @@ let LearnersService = LearnersService_1 = class LearnersService {
             });
             await auth_utils_1.AuthUtils.sendPasswordEmail(createLearnerDto.email, password, 'Apprenant');
             return learner;
+        }, {
+            timeout: 20000
         });
     }
     async findAll() {

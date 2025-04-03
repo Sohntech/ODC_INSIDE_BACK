@@ -1,10 +1,12 @@
 import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
-import { Coach, UserRole } from '@prisma/client';
+import { Coach, UserRole, PrismaClient } from '@prisma/client';
 import { AuthUtils } from '../utils/auth.utils';
 import * as fs from 'fs';
 import { CreateCoachDto } from './dto/create-coach.dto';
+import { MatriculeUtils } from '../utils/matricule.utils';
+import * as QRCode from 'qrcode';
 
 @Injectable()
 export class CoachesService {
@@ -53,16 +55,54 @@ export class CoachesService {
           throw new ConflictException('Un coach avec cet email ou ce téléphone existe déjà');
         }
 
+        // Fetch referential if refId is provided
+        const referential = createCoachDto.refId ? 
+          await prisma.referential.findUnique({ where: { id: createCoachDto.refId } }) 
+          : null;
+
+        // Generate matricule using the prisma instance from transaction
+        const matricule = await MatriculeUtils.generateCoachMatricule(
+          prisma as unknown as PrismaClient,
+          createCoachDto.firstName,
+          createCoachDto.lastName,
+          referential?.name
+        );
+
+        // Generate and upload QR code
+        let qrCodeUrl: string | undefined;
+        try {
+          const qrCodeBuffer = await QRCode.toBuffer(matricule);
+          const qrCodeFile = {
+            fieldname: 'qrCode',
+            originalname: 'qrcode.png',
+            encoding: '7bit',
+            mimetype: 'image/png',
+            buffer: qrCodeBuffer,
+            size: qrCodeBuffer.length,
+            stream: null,
+            destination: '',
+            filename: 'qrcode.png',
+            path: '',
+          };
+
+          const qrCodeResult = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
+          qrCodeUrl = qrCodeResult.url;
+        } catch (error) {
+          this.logger.error('Failed to generate or upload QR code:', error);
+        }
+
         // Generate password
         const password = AuthUtils.generatePassword();
         const hashedPassword = await AuthUtils.hashPassword(password);
 
-        // Create coach
+        // Create coach data object
         const coachData = {
+          matricule,
           firstName: createCoachDto.firstName,
           lastName: createCoachDto.lastName,
           phone: createCoachDto.phone,
           photoUrl,
+          qrCode: qrCodeUrl,  // This now matches the schema
           ...(createCoachDto.refId && {
             referential: {
               connect: { id: createCoachDto.refId }
@@ -91,6 +131,8 @@ export class CoachesService {
         await AuthUtils.sendPasswordEmail(createCoachDto.email, password, 'Coach');
 
         return newCoach;
+      }, {
+        timeout: 20000 // Increase timeout to 20 seconds
       });
 
       this.logger.log('Coach created successfully:', coach.id);

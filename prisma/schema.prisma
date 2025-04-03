@@ -34,10 +34,12 @@ model Admin {
 
 model Coach {
   id          String            @id @default(uuid())
+  matricule   String            @unique
   firstName   String
   lastName    String
   phone       String?
   photoUrl    String?
+  qrCode      String?          // Add this field
   userId      String            @unique
   refId       String?
   createdAt   DateTime          @default(now())
@@ -74,6 +76,7 @@ model Restaurateur {
 
 model Learner {
   id            String                 @id @default(uuid())
+  matricule     String                 @unique
   firstName     String
   lastName      String
   address       String?
