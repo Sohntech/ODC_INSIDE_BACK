@@ -23,54 +23,108 @@ let PromotionsService = PromotionsService_1 = class PromotionsService {
     }
     async create(data, photoFile) {
         try {
-            return await this.prisma.$transaction(async (prisma) => {
-                const activePromotion = await prisma.promotion.findFirst({
-                    where: { status: client_1.PromotionStatus.ACTIVE }
-                });
-                let photoUrl = undefined;
-                if (photoFile) {
+            let photoUrl;
+            if (photoFile) {
+                try {
+                    if (photoFile.size > 1024 * 1024) {
+                        this.logger.log('Large file detected, compression might be needed');
+                    }
                     const uploadResult = await this.cloudinary.uploadFile(photoFile, 'promotions');
                     photoUrl = uploadResult.url;
                 }
-                const referentialIds = Array.isArray(data.referentialIds)
-                    ? data.referentialIds.filter(Boolean)
-                    : [];
-                this.logger.debug(`Processing referentialIds: ${referentialIds.join(', ')}`);
+                catch (error) {
+                    this.logger.error('Photo upload failed:', error);
+                    if (error.http_code === 499) {
+                        throw new Error('Photo upload timed out. Please try with a smaller file or better connection.');
+                    }
+                    throw new Error('Failed to upload photo. Please try again.');
+                }
+            }
+            const referentialIds = Array.isArray(data.referentialIds)
+                ? data.referentialIds
+                : data.referentialIds?.split(',').map(id => id.trim()) ?? [];
+            const newPromotion = await this.prisma.$transaction(async (prisma) => {
+                const activePromotion = await prisma.promotion.findFirst({
+                    where: { status: client_1.PromotionStatus.ACTIVE }
+                });
                 if (referentialIds.length > 0) {
-                    const existingReferentials = await prisma.referential.findMany({
+                    const existingRefs = await prisma.referential.findMany({
                         where: { id: { in: referentialIds } },
                         select: { id: true }
                     });
-                    if (existingReferentials.length !== referentialIds.length) {
-                        const foundIds = existingReferentials.map(ref => ref.id);
-                        const missingIds = referentialIds.filter(id => !foundIds.includes(id));
+                    if (existingRefs.length !== referentialIds.length) {
+                        const foundIds = new Set(existingRefs.map(ref => ref.id));
+                        const missingIds = referentialIds.filter(id => !foundIds.has(id));
                         throw new common_1.NotFoundException(`Referentials not found: ${missingIds.join(', ')}`);
                     }
                 }
-                const createData = {
-                    name: data.name,
-                    startDate: new Date(data.startDate),
-                    endDate: new Date(data.endDate),
-                    photoUrl,
-                    status: activePromotion ? client_1.PromotionStatus.INACTIVE : client_1.PromotionStatus.ACTIVE,
-                    referentials: referentialIds.length > 0
-                        ? { connect: referentialIds.map(id => ({ id })) }
-                        : undefined
-                };
-                this.logger.debug(`Creating promotion with data: ${JSON.stringify(createData, null, 2)}`);
-                const newPromotion = await prisma.promotion.create({
-                    data: createData,
+                return prisma.promotion.create({
+                    data: {
+                        name: data.name,
+                        startDate: new Date(data.startDate),
+                        endDate: new Date(data.endDate),
+                        photoUrl,
+                        status: activePromotion ? client_1.PromotionStatus.INACTIVE : client_1.PromotionStatus.ACTIVE,
+                        referentials: referentialIds.length > 0
+                            ? { connect: referentialIds.map(id => ({ id })) }
+                            : undefined
+                    },
                     include: {
                         referentials: true,
                         learners: true
                     }
                 });
-                return newPromotion;
+            }, {
+                timeout: 30000,
+                maxWait: 35000
             });
+            if (referentialIds.length > 0) {
+                await this.updateSessionDatesInBatches(newPromotion.id, referentialIds);
+            }
+            return newPromotion;
         }
         catch (error) {
-            this.logger.error(`Promotion creation failed: ${error.message}`);
+            this.logger.error('Failed to create promotion:', error);
+            if (error.message.includes('upload')) {
+                throw new common_1.BadRequestException(error.message);
+            }
             throw error;
+        }
+    }
+    async updateSessionDatesInBatches(promotionId, referentialIds) {
+        const promotion = await this.prisma.promotion.findUnique({
+            where: { id: promotionId },
+        });
+        const batchSize = 5;
+        for (let i = 0; i < referentialIds.length; i += batchSize) {
+            const batch = referentialIds.slice(i, i + batchSize);
+            await Promise.all(batch.map(async (refId) => {
+                const referential = await this.prisma.referential.findUnique({
+                    where: { id: refId },
+                    include: { sessions: true },
+                });
+                if (referential?.numberOfSessions > 1 && referential.sessions?.length === 2) {
+                    const sessionLength = referential.sessionLength || 4;
+                    const session1EndDate = new Date(promotion.startDate);
+                    session1EndDate.setMonth(session1EndDate.getMonth() + sessionLength);
+                    await this.prisma.$transaction([
+                        this.prisma.session.update({
+                            where: { id: referential.sessions[0].id },
+                            data: {
+                                startDate: promotion.startDate,
+                                endDate: session1EndDate,
+                            },
+                        }),
+                        this.prisma.session.update({
+                            where: { id: referential.sessions[1].id },
+                            data: {
+                                startDate: session1EndDate,
+                                endDate: promotion.endDate,
+                            },
+                        }),
+                    ]);
+                }
+            }));
         }
     }
     async findAll() {
@@ -171,6 +225,52 @@ let PromotionsService = PromotionsService_1 = class PromotionsService {
             activeModules,
             upcomingEvents,
         };
+    }
+    async addReferentials(promotionId, referentialIds) {
+        const promotion = await this.prisma.promotion.findUnique({
+            where: { id: promotionId },
+        });
+        if (!promotion) {
+            throw new common_1.NotFoundException('Promotion not found');
+        }
+        return this.prisma.$transaction(async (prisma) => {
+            await prisma.promotion.update({
+                where: { id: promotionId },
+                data: {
+                    referentials: {
+                        connect: referentialIds.map(id => ({ id })),
+                    },
+                },
+            });
+            const referentials = await prisma.referential.findMany({
+                where: { id: { in: referentialIds } },
+                include: { sessions: true },
+            });
+            for (const referential of referentials) {
+                if (referential.numberOfSessions > 1 && referential.sessions?.length === 2) {
+                    const sessionLength = referential.sessionLength || 4;
+                    const promotionStartDate = promotion.startDate;
+                    const promotionEndDate = promotion.endDate;
+                    const session1EndDate = new Date(promotionStartDate);
+                    session1EndDate.setMonth(session1EndDate.getMonth() + sessionLength);
+                    await prisma.session.update({
+                        where: { id: referential.sessions[0].id },
+                        data: {
+                            startDate: promotionStartDate,
+                            endDate: session1EndDate,
+                        },
+                    });
+                    await prisma.session.update({
+                        where: { id: referential.sessions[1].id },
+                        data: {
+                            startDate: session1EndDate,
+                            endDate: promotionEndDate,
+                        },
+                    });
+                }
+            }
+            return this.findOne(promotionId);
+        });
     }
 };
 exports.PromotionsService = PromotionsService;

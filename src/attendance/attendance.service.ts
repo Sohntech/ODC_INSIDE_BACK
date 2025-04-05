@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Cron } from '@nestjs/schedule';
 import { AbsenceStatus, LearnerAttendance } from '@prisma/client';
+import { LearnerScanResponse, CoachScanResponse } from './interfaces/scan-response.interface';
 
 @Injectable()
 export class AttendanceService {
@@ -13,6 +14,7 @@ export class AttendanceService {
       include: {
         user: true,
         referential: true,
+        promotion: true,  // Add this line to include promotion
       },
     });
 
@@ -39,13 +41,56 @@ export class AttendanceService {
     return coach;
   }
 
-  async scanLearner(matricule: string): Promise<any> {
+  private isWithinScanTime(scanTime: Date): boolean {
+    const cutoffTime = new Date(
+      scanTime.getFullYear(),
+      scanTime.getMonth(),
+      scanTime.getDate(),
+      8,
+      15
+    );
+    return scanTime <= cutoffTime;
+  }
+
+  async scan(matricule: string): Promise<LearnerScanResponse | CoachScanResponse> {
+    // First try to find a learner
+    const learner = await this.prisma.learner.findUnique({
+      where: { matricule },
+      include: {
+        user: true,
+        referential: true,
+        promotion: true,
+      },
+    });
+
+    if (learner) {
+      return this.scanLearner(matricule);
+    }
+
+    // If not a learner, try to find a coach
+    const coach = await this.prisma.coach.findUnique({
+      where: { matricule },
+      include: {
+        user: true,
+        referential: true,
+      },
+    });
+
+    if (coach) {
+      return this.scanCoach(matricule);
+    }
+
+    // If neither learner nor coach is found
+    throw new NotFoundException('Aucun utilisateur trouvé avec ce matricule');
+  }
+
+  public async scanLearner(matricule: string): Promise<LearnerScanResponse> {
     const learner = await this.findLearnerByMatricule(matricule);
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const cutoffTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 8, 15);
 
+    // Check for any existing attendance record for today
     const existingAttendance = await this.prisma.learnerAttendance.findFirst({
       where: {
         learnerId: learner.id,
@@ -53,23 +98,14 @@ export class AttendanceService {
       },
     });
 
-    const isLate = now > cutoffTime;
-
     if (existingAttendance) {
-      return this.prisma.learnerAttendance.update({
-        where: { id: existingAttendance.id },
-        data: {
-          isPresent: true,
-          scanTime: now,
-          isLate,
-        },
-        include: {
-          learner: true,
-        },
-      });
+      throw new ConflictException(
+        `${learner.firstName} ${learner.lastName} a déjà été scanné aujourd'hui à ${existingAttendance.scanTime.toLocaleTimeString()}`
+      );
     }
 
-    return this.prisma.learnerAttendance.create({
+    const isLate = !this.isWithinScanTime(now);
+    const attendance = await this.prisma.learnerAttendance.create({
       data: {
         date: today,
         isPresent: true,
@@ -77,19 +113,32 @@ export class AttendanceService {
         isLate,
         learnerId: learner.id,
       },
-      include: {
-        learner: true,
-      },
     });
+
+    return {
+      type: 'LEARNER',
+      scanTime: attendance.scanTime,
+      attendanceStatus: isLate ? 'LATE' : 'PRESENT',
+      isAlreadyScanned: false,
+      learner: {
+        id: learner.id,
+        matricule: learner.matricule,
+        firstName: learner.firstName,
+        lastName: learner.lastName,
+        photoUrl: learner.photoUrl,
+        referential: learner.referential,
+        promotion: learner.promotion
+      }
+    };
   }
 
-  async scanCoach(matricule: string): Promise<any> {
+  public async scanCoach(matricule: string): Promise<CoachScanResponse> {
     const coach = await this.findCoachByMatricule(matricule);
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const cutoffTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 8, 15);
 
+    // Check for any existing attendance record for today
     const existingAttendance = await this.prisma.coachAttendance.findFirst({
       where: {
         coachId: coach.id,
@@ -97,23 +146,14 @@ export class AttendanceService {
       },
     });
 
-    const isLate = now > cutoffTime;
-
     if (existingAttendance) {
-      return this.prisma.coachAttendance.update({
-        where: { id: existingAttendance.id },
-        data: {
-          isPresent: true,
-          scanTime: now,
-          isLate,
-        },
-        include: {
-          coach: true,
-        },
-      });
+      throw new ConflictException(
+        `${coach.firstName} ${coach.lastName} a déjà été scanné aujourd'hui à ${existingAttendance.scanTime.toLocaleTimeString()}`
+      );
     }
 
-    return this.prisma.coachAttendance.create({
+    const isLate = !this.isWithinScanTime(now);
+    const attendance = await this.prisma.coachAttendance.create({
       data: {
         date: today,
         isPresent: true,
@@ -122,9 +162,21 @@ export class AttendanceService {
         coachId: coach.id,
       },
       include: {
-        coach: true,
+        coach: {
+          include: {
+            referential: true,
+          },
+        },
       },
     });
+
+    return {
+      type: 'COACH',
+      scanTime: attendance.scanTime,
+      attendanceStatus: isLate ? 'LATE' : 'PRESENT',
+      isAlreadyScanned: false,
+      coach: attendance.coach
+    };
   }
 
   async submitAbsenceJustification(
@@ -179,37 +231,68 @@ export class AttendanceService {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const learnerScans = await this.prisma.learnerAttendance.findMany({
-      where: {
-        date: today,
-        isPresent: true,
-      },
-      include: {
-        learner: true,
-      },
-      orderBy: {
-        scanTime: 'desc',
-      },
-      take: 10,
-    });
-
-    const coachScans = await this.prisma.coachAttendance.findMany({
-      where: {
-        date: today,
-        isPresent: true,
-      },
-      include: {
-        coach: true,
-      },
-      orderBy: {
-        scanTime: 'desc',
-      },
-      take: 10,
-    });
+    const [learnerScans, coachScans] = await Promise.all([
+      this.prisma.learnerAttendance.findMany({
+        where: {
+          date: today,
+          isPresent: true,
+        },
+        include: {
+          learner: {
+            include: {
+              referential: true,
+              promotion: true
+            }
+          },
+        },
+        orderBy: { scanTime: 'desc' },
+        take: 10,
+      }),
+      this.prisma.coachAttendance.findMany({
+        where: {
+          date: today,
+          isPresent: true,
+        },
+        include: {
+          coach: {
+            include: {
+              referential: true,
+            }
+          },
+        },
+        orderBy: { scanTime: 'desc' },
+        take: 10,
+      }),
+    ]);
 
     return {
-      learnerScans,
-      coachScans,
+      learnerScans: learnerScans.map(scan => ({
+        type: 'LEARNER',
+        scanTime: scan.scanTime,
+        attendanceStatus: scan.isLate ? 'LATE' : 'PRESENT',
+        learner: {
+          id: scan.learner.id,
+          matricule: scan.learner.matricule,
+          firstName: scan.learner.firstName,
+          lastName: scan.learner.lastName,
+          photoUrl: scan.learner.photoUrl,
+          referential: scan.learner.referential,
+          promotion: scan.learner.promotion
+        }
+      })),
+      coachScans: coachScans.map(scan => ({
+        type: 'COACH',
+        scanTime: scan.scanTime,
+        attendanceStatus: scan.isLate ? 'LATE' : 'PRESENT',
+        coach: {
+          id: scan.coach.id,
+          matricule: scan.coach.matricule,
+          firstName: scan.coach.firstName,
+          lastName: scan.coach.lastName,
+          photoUrl: scan.coach.photoUrl,
+          referential: scan.coach.referential
+        }
+      }))
     };
   }
 
@@ -309,6 +392,53 @@ export class AttendanceService {
     }
 
     return { months };
+  }
+
+  async getScanHistory(
+    type: 'LEARNER' | 'COACH',
+    startDate: Date,
+    endDate: Date
+  ) {
+    if (type === 'LEARNER') {
+      return this.prisma.learnerAttendance.findMany({
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          }
+        },
+        include: {
+          learner: {
+            include: {
+              referential: true,
+              promotion: true
+            }
+          }
+        },
+        orderBy: {
+          date: 'desc'
+        }
+      });
+    }
+
+    return this.prisma.coachAttendance.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate
+        }
+      },
+      include: {
+        coach: {
+          include: {
+            referential: true
+          }
+        }
+      },
+      orderBy: {
+        date: 'desc'
+      }
+    });
   }
 
   @Cron('0 0 13 * * 1-5') // Du lundi au vendredi à 13h

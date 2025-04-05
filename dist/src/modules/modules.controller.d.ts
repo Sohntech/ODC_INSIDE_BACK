@@ -7,9 +7,10 @@ export declare class ModulesController {
         name: string;
         id: string;
         photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -19,9 +20,10 @@ export declare class ModulesController {
         name: string;
         id: string;
         photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -31,9 +33,10 @@ export declare class ModulesController {
         name: string;
         id: string;
         photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -43,9 +46,10 @@ export declare class ModulesController {
         name: string;
         id: string;
         photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -55,9 +59,10 @@ export declare class ModulesController {
         name: string;
         id: string;
         photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -67,9 +72,10 @@ export declare class ModulesController {
         name: string;
         id: string;
         photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -82,30 +88,32 @@ export declare class ModulesController {
     }): Promise<{
         learner: {
             id: string;
-            matricule: string;
             firstName: string;
             lastName: string;
             phone: string;
             photoUrl: string | null;
-            qrCode: string;
             userId: string;
-            refId: string | null;
             createdAt: Date;
             updatedAt: Date;
+            matricule: string;
             address: string | null;
             gender: import(".prisma/client").$Enums.Gender;
             birthDate: Date;
             birthPlace: string;
             status: import(".prisma/client").$Enums.LearnerStatus;
+            qrCode: string;
+            refId: string | null;
             promotionId: string;
+            sessionId: string | null;
         };
         module: {
             name: string;
             id: string;
             photoUrl: string | null;
-            refId: string;
             createdAt: Date;
             updatedAt: Date;
+            refId: string;
+            sessionId: string | null;
             description: string | null;
             startDate: Date;
             endDate: Date;
@@ -115,10 +123,10 @@ export declare class ModulesController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;
+        learnerId: string;
     }>;
     updateGrade(gradeId: string, data: {
         value: number;
@@ -126,30 +134,32 @@ export declare class ModulesController {
     }): Promise<{
         learner: {
             id: string;
-            matricule: string;
             firstName: string;
             lastName: string;
             phone: string;
             photoUrl: string | null;
-            qrCode: string;
             userId: string;
-            refId: string | null;
             createdAt: Date;
             updatedAt: Date;
+            matricule: string;
             address: string | null;
             gender: import(".prisma/client").$Enums.Gender;
             birthDate: Date;
             birthPlace: string;
             status: import(".prisma/client").$Enums.LearnerStatus;
+            qrCode: string;
+            refId: string | null;
             promotionId: string;
+            sessionId: string | null;
         };
         module: {
             name: string;
             id: string;
             photoUrl: string | null;
-            refId: string;
             createdAt: Date;
             updatedAt: Date;
+            refId: string;
+            sessionId: string | null;
             description: string | null;
             startDate: Date;
             endDate: Date;
@@ -159,9 +169,9 @@ export declare class ModulesController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;
+        learnerId: string;
     }>;
 }

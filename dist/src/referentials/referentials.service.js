@@ -17,17 +17,40 @@ let ReferentialsService = class ReferentialsService {
         this.prisma = prisma;
     }
     async create(data) {
-        return this.prisma.referential.create({
-            data: {
-                ...data,
-                promotions: undefined,
-            },
-            include: {
-                learners: true,
-                coaches: true,
-                modules: true,
-                promotions: true,
-            },
+        const { numberOfSessions, sessionLength, ...referentialData } = data;
+        return this.prisma.$transaction(async (prisma) => {
+            const referential = await prisma.referential.create({
+                data: {
+                    ...referentialData,
+                    numberOfSessions,
+                    sessionLength: numberOfSessions > 1 ? sessionLength : null,
+                },
+            });
+            if (numberOfSessions > 1) {
+                await prisma.session.create({
+                    data: {
+                        name: 'Session 1',
+                        capacity: data.capacity,
+                        referentialId: referential.id,
+                    },
+                });
+                await prisma.session.create({
+                    data: {
+                        name: 'Session 2',
+                        capacity: data.capacity,
+                        referentialId: referential.id,
+                    },
+                });
+            }
+            return prisma.referential.findUnique({
+                where: { id: referential.id },
+                include: {
+                    sessions: true,
+                    learners: true,
+                    coaches: true,
+                    modules: true,
+                },
+            });
         });
     }
     async findAll() {
@@ -43,6 +66,12 @@ let ReferentialsService = class ReferentialsService {
         const referential = await this.prisma.referential.findUnique({
             where: { id },
             include: {
+                sessions: {
+                    include: {
+                        learners: true,
+                        modules: true,
+                    }
+                },
                 learners: true,
                 coaches: true,
                 modules: true,
@@ -67,29 +96,67 @@ let ReferentialsService = class ReferentialsService {
     }
     async getStatistics(id) {
         const referential = await this.findOne(id);
+        const stats = {
+            totalLearners: 0,
+            activeModules: 0,
+            totalCoaches: await this.prisma.coach.count({
+                where: { refId: id },
+            }),
+            capacity: referential.capacity,
+            availableSpots: 0,
+            sessions: [],
+        };
+        if (referential.numberOfSessions > 1 && referential.sessions) {
+            for (const session of referential.sessions) {
+                const sessionStats = {
+                    sessionId: session.id,
+                    name: session.name,
+                    totalLearners: await this.prisma.learner.count({
+                        where: { sessionId: session.id },
+                    }),
+                    activeModules: await this.prisma.module.count({
+                        where: {
+                            sessionId: session.id,
+                            endDate: { gte: new Date() },
+                            startDate: { lte: new Date() },
+                        },
+                    }),
+                };
+                stats.sessions.push(sessionStats);
+                stats.totalLearners += sessionStats.totalLearners;
+                stats.activeModules += sessionStats.activeModules;
+            }
+        }
+        else {
+            stats.totalLearners = await this.prisma.learner.count({
+                where: { refId: id },
+            });
+            stats.activeModules = await this.prisma.module.count({
+                where: {
+                    refId: id,
+                    endDate: { gte: new Date() },
+                    startDate: { lte: new Date() },
+                },
+            });
+        }
+        stats.availableSpots = stats.capacity - stats.totalLearners;
+        return stats;
+    }
+    async getSessionStatistics(sessionId) {
         const totalLearners = await this.prisma.learner.count({
-            where: { refId: id },
+            where: { sessionId },
         });
         const activeModules = await this.prisma.module.count({
             where: {
-                refId: id,
-                endDate: {
-                    gte: new Date(),
-                },
-                startDate: {
-                    lte: new Date(),
-                },
+                sessionId,
+                endDate: { gte: new Date() },
+                startDate: { lte: new Date() },
             },
         });
-        const totalCoaches = await this.prisma.coach.count({
-            where: { refId: id },
-        });
         return {
+            sessionId,
             totalLearners,
             activeModules,
-            totalCoaches,
-            capacity: referential.capacity,
-            availableSpots: referential.capacity - totalLearners,
         };
     }
     async assignToPromotion(referentialIds, promotionId) {

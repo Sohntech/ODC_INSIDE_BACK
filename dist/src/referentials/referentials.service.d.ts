@@ -1,41 +1,36 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { Referential } from '@prisma/client';
+import { CreateReferentialDto } from './dto/create-referential.dto';
+import { ReferentialWithRelations } from './interfaces/referential.interface';
+import { ReferentialStats } from './interfaces/referential-stats.interface';
 export declare class ReferentialsService {
     private prisma;
     constructor(prisma: PrismaService);
-    create(data: {
-        name: string;
-        description?: string;
-        photoUrl?: string;
-        capacity: number;
-    }): Promise<Referential>;
+    create(data: CreateReferentialDto): Promise<Referential>;
     findAll(): Promise<Referential[]>;
-    findOne(id: string): Promise<Referential>;
+    findOne(id: string): Promise<ReferentialWithRelations>;
     update(id: string, data: Partial<Referential>): Promise<Referential>;
-    getStatistics(id: string): Promise<{
-        totalLearners: number;
-        activeModules: number;
-        totalCoaches: number;
-        capacity: number;
-        availableSpots: number;
-    }>;
+    getStatistics(id: string): Promise<ReferentialStats>;
+    private getSessionStatistics;
     assignToPromotion(referentialIds: string[], promotionId: string): Promise<{
         referentials: {
-            name: string;
             id: string;
             photoUrl: string | null;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
             description: string | null;
             capacity: number;
+            numberOfSessions: number;
+            sessionLength: number | null;
         }[];
     } & {
-        name: string;
         id: string;
         photoUrl: string | null;
+        status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.PromotionStatus;
+        name: string;
         startDate: Date;
         endDate: Date;
     }>;

@@ -11,6 +11,7 @@ export declare class LearnersService {
     create(createLearnerDto: CreateLearnerDto, photoFile?: Express.Multer.File): Promise<Learner>;
     findAll(): Promise<Learner[]>;
     findOne(id: string): Promise<Learner>;
+    findByEmail(email: string): Promise<Learner>;
     update(id: string, data: Partial<Learner>): Promise<Learner>;
     updateStatus(id: string, status: LearnerStatus): Promise<Learner>;
     updateKit(id: string, kitData: {
@@ -20,13 +21,13 @@ export declare class LearnersService {
         polo?: boolean;
     }): Promise<Learner>;
     uploadDocument(id: string, file: Express.Multer.File, type: string, name: string): Promise<{
-        name: string;
         id: string;
+        name: string;
+        type: string;
+        url: string;
+        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
-        type: string;
-        learnerId: string;
-        url: string;
     }>;
     getAttendanceStats(id: string): Promise<{
         totalDays: number;
@@ -42,9 +43,9 @@ export declare class LearnersService {
     getStatusHistory(learnerId: string): Promise<{
         id: string;
         learnerId: string;
-        reason: string | null;
         previousStatus: import(".prisma/client").$Enums.LearnerStatus | null;
         newStatus: import(".prisma/client").$Enums.LearnerStatus;
+        reason: string | null;
         date: Date;
     }[]>;
 }

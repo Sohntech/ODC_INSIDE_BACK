@@ -30,6 +30,9 @@ let AttendanceController = AttendanceController_1 = class AttendanceController {
         this.cloudinaryService = cloudinaryService;
         this.logger = new common_1.Logger(AttendanceController_1.name);
     }
+    async scan(matricule) {
+        return this.attendanceService.scan(matricule);
+    }
     async scanLearner(body) {
         return this.attendanceService.scanLearner(body.matricule);
     }
@@ -67,6 +70,17 @@ let AttendanceController = AttendanceController_1 = class AttendanceController {
     }
 };
 exports.AttendanceController = AttendanceController;
+__decorate([
+    (0, common_1.Post)('scan'),
+    (0, swagger_1.ApiOperation)({ summary: 'Scan QR code for attendance' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successfully scanned' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'User not found' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Already scanned today' }),
+    __param(0, (0, common_1.Body)('matricule')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendanceController.prototype, "scan", null);
 __decorate([
     (0, common_1.Post)('scan/learner'),
     (0, roles_decorator_1.Roles)('VIGIL'),

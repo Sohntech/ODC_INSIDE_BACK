@@ -50,6 +50,13 @@ let LearnersController = class LearnersController {
     async getAttendanceStats(id) {
         return this.learnersService.getAttendanceStats(id);
     }
+    async findByEmail(email, req) {
+        console.log('Hitting findByEmail endpoint with email:', email);
+        if (req.user.role !== client_1.UserRole.ADMIN && req.user.email !== email) {
+            throw new common_1.ForbiddenException('You can only access your own data');
+        }
+        return this.learnersService.findByEmail(email);
+    }
     async patchUpdateStatus(id, updateStatusDto) {
         return this.learnersService.updateLearnerStatus(id, updateStatusDto);
     }
@@ -144,6 +151,19 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], LearnersController.prototype, "getAttendanceStats", null);
+__decorate([
+    (0, common_1.Get)('email/:email'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiOperation)({ summary: 'Find a learner by email' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Returns the learner' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Learner not found' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Forbidden - Can only access own data' }),
+    __param(0, (0, common_1.Param)('email')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], LearnersController.prototype, "findByEmail", null);
 __decorate([
     (0, common_1.Patch)(':id/status'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

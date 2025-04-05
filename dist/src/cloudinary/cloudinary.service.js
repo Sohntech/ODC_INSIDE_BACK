@@ -20,6 +20,8 @@ let CloudinaryService = CloudinaryService_1 = class CloudinaryService {
         this.configService = configService;
         this.logger = new common_1.Logger(CloudinaryService_1.name);
         this.isConfigured = false;
+        this.maxRetries = 3;
+        this.chunkSize = 5242880;
         const cloudName = this.configService.get('CLOUDINARY_CLOUD_NAME');
         const apiKey = this.configService.get('CLOUDINARY_API_KEY');
         const apiSecret = this.configService.get('CLOUDINARY_API_SECRET');
@@ -46,30 +48,37 @@ let CloudinaryService = CloudinaryService_1 = class CloudinaryService {
             this.isConfigured = false;
         }
     }
-    async uploadFile(file, folder) {
-        if (!this.isConfigured) {
-            throw new Error('Cloudinary is not configured');
-        }
-        if (!file || !file.buffer) {
-            this.logger.error('File or file buffer is missing');
-            throw new Error('File buffer is missing');
-        }
-        this.logger.log(`Attempting to upload file ${file.originalname} to folder ${folder}`);
-        return new Promise((resolve, reject) => {
-            const uploadStream = cloudinary_1.v2.uploader.upload_stream({
-                folder: folder,
-                resource_type: 'auto',
-            }, (error, result) => {
-                if (error) {
-                    this.logger.error('Upload failed:', error);
-                    reject(error);
-                    return;
-                }
-                this.logger.log(`File uploaded successfully. URL: ${result.secure_url}`);
-                resolve({ url: result.secure_url });
+    async uploadFile(file, folder, retryCount = 0) {
+        try {
+            this.logger.log(`Attempting to upload file ${file.originalname} to folder ${folder}`);
+            const uploadOptions = {
+                folder,
+                resource_type: "auto",
+                timeout: 120000,
+                chunk_size: this.chunkSize,
+            };
+            return new Promise((resolve, reject) => {
+                const uploadStream = cloudinary_1.v2.uploader.upload_stream(uploadOptions, (error, result) => {
+                    if (error) {
+                        this.logger.error('Upload failed:', error);
+                        reject(error);
+                    }
+                    else {
+                        resolve({ url: result.secure_url });
+                    }
+                });
+                streamifier.createReadStream(file.buffer).pipe(uploadStream);
             });
-            streamifier.createReadStream(file.buffer).pipe(uploadStream);
-        });
+        }
+        catch (error) {
+            this.logger.error(`Upload failed (attempt ${retryCount + 1}):`, error);
+            if (retryCount < this.maxRetries) {
+                this.logger.log(`Retrying upload (attempt ${retryCount + 2})...`);
+                await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                return this.uploadFile(file, folder, retryCount + 1);
+            }
+            throw error;
+        }
     }
     async deleteFile(publicId) {
         if (!this.isConfigured) {

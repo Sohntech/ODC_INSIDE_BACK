@@ -39,7 +39,7 @@ model Coach {
   lastName    String
   phone       String?
   photoUrl    String?
-  qrCode      String?          // Add this field
+  qrCode      String?
   userId      String            @unique
   refId       String?
   createdAt   DateTime          @default(now())
@@ -58,7 +58,7 @@ model Vigil {
   photoUrl  String?
   userId    String   @unique
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
 }
 
@@ -102,6 +102,8 @@ model Learner {
   meals         Meal[]
   tutor         Tutor?
   kit           Kit?
+  sessionId     String?
+  session       Session?               @relation(fields: [sessionId], references: [id])
 }
 
 model LearnerStatusHistory {
@@ -149,24 +151,43 @@ model Promotion {
   photoUrl     String?
   status       PromotionStatus @default(ACTIVE)
   createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  updatedAt    DateTime        @default(now())
   events       Event[]
   learners     Learner[]
   referentials Referential[] // Many-to-many relationship
 }
 
 model Referential {
-  id          String     @id @default(uuid())
-  name        String
-  description String?
-  photoUrl    String?
-  capacity    Int
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  learners    Learner[]
-  coaches     Coach[]
-  modules     Module[]
-  promotions  Promotion[] // Many-to-many relationship
+  id               String     @id @default(uuid())
+  name             String
+  description      String?
+  photoUrl         String?
+  capacity         Int
+  numberOfSessions Int       @default(1)
+  sessionLength    Int?      // null means default 10 months
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  learners         Learner[]
+  coaches          Coach[]
+  modules          Module[]
+  promotions       Promotion[]
+  sessions         Session[]
+}
+
+model Session {
+  id            String      @id @default(uuid())
+  name          String      
+  startDate     DateTime?   // Make dates optional
+  endDate       DateTime?
+  referentialId String
+  capacity      Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  referential   Referential @relation(fields: [referentialId], references: [id])
+  learners      Learner[]
+  modules       Module[]
+
+  @@unique([referentialId, name])
 }
 
 model Module {
@@ -183,6 +204,8 @@ model Module {
   grades      Grade[]
   coach       Coach       @relation(fields: [coachId], references: [id])
   referential Referential @relation(fields: [refId], references: [id])
+  sessionId   String?
+  session     Session?    @relation(fields: [sessionId], references: [id])
 }
 
 model Grade {
@@ -209,7 +232,7 @@ model LearnerAttendance {
   documentUrl   String?
   learnerId     String
   createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  updatedAt     DateTime      @default(now())
   learner       Learner       @relation(fields: [learnerId], references: [id])
 }
 

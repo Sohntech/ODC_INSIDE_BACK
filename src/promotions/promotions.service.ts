@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Promotion, PromotionStatus } from '@prisma/client';
@@ -16,68 +16,132 @@ export class PromotionsService {
 
   async create(data: CreatePromotionDto, photoFile?: Express.Multer.File): Promise<Promotion> {
     try {
-      return await this.prisma.$transaction(async (prisma) => {
-        // Check for active promotion first
+      // 1. Handle photo upload first, with optimized settings
+      let photoUrl: string | undefined;
+      if (photoFile) {
+        try {
+          // Compress image if needed
+          if (photoFile.size > 1024 * 1024) { // If larger than 1MB
+            this.logger.log('Large file detected, compression might be needed');
+          }
+
+          const uploadResult = await this.cloudinary.uploadFile(photoFile, 'promotions');
+          photoUrl = uploadResult.url;
+        } catch (error) {
+          this.logger.error('Photo upload failed:', error);
+          if (error.http_code === 499) {
+            throw new Error('Photo upload timed out. Please try with a smaller file or better connection.');
+          }
+          throw new Error('Failed to upload photo. Please try again.');
+        }
+      }
+
+      // 2. Process referential IDs
+      const referentialIds = Array.isArray(data.referentialIds) 
+        ? data.referentialIds 
+        : data.referentialIds?.split(',').map(id => id.trim()) ?? [];
+
+      // 3. Create promotion in transaction
+      const newPromotion = await this.prisma.$transaction(async (prisma) => {
+        // Check active promotion
         const activePromotion = await prisma.promotion.findFirst({
           where: { status: PromotionStatus.ACTIVE }
         });
 
-        // Handle photo upload
-        let photoUrl = undefined;
-        if (photoFile) {
-          const uploadResult = await this.cloudinary.uploadFile(photoFile, 'promotions');
-          photoUrl = uploadResult.url;
-        }
-
-        // Clean and validate referentialIds
-        const referentialIds = Array.isArray(data.referentialIds) 
-          ? data.referentialIds.filter(Boolean)
-          : [];
-
-        this.logger.debug(`Processing referentialIds: ${referentialIds.join(', ')}`);
-
-        // Verify referentials exist
+        // Verify all referentials exist
         if (referentialIds.length > 0) {
-          const existingReferentials = await prisma.referential.findMany({
+          const existingRefs = await prisma.referential.findMany({
             where: { id: { in: referentialIds } },
             select: { id: true }
           });
 
-          if (existingReferentials.length !== referentialIds.length) {
-            const foundIds = existingReferentials.map(ref => ref.id);
-            const missingIds = referentialIds.filter(id => !foundIds.includes(id));
+          if (existingRefs.length !== referentialIds.length) {
+            const foundIds = new Set(existingRefs.map(ref => ref.id));
+            const missingIds = referentialIds.filter(id => !foundIds.has(id));
             throw new NotFoundException(`Referentials not found: ${missingIds.join(', ')}`);
           }
         }
 
-        // Prepare creation data
-        const createData = {
-          name: data.name,
-          startDate: new Date(data.startDate),
-          endDate: new Date(data.endDate),
-          photoUrl,
-          status: activePromotion ? PromotionStatus.INACTIVE : PromotionStatus.ACTIVE,
-          referentials: referentialIds.length > 0 
-            ? { connect: referentialIds.map(id => ({ id })) }
-            : undefined
-        };
-
-        this.logger.debug(`Creating promotion with data: ${JSON.stringify(createData, null, 2)}`);
-
         // Create the promotion
-        const newPromotion = await prisma.promotion.create({
-          data: createData,
+        return prisma.promotion.create({
+          data: {
+            name: data.name,
+            startDate: new Date(data.startDate),
+            endDate: new Date(data.endDate),
+            photoUrl,
+            status: activePromotion ? PromotionStatus.INACTIVE : PromotionStatus.ACTIVE,
+            referentials: referentialIds.length > 0 
+              ? { connect: referentialIds.map(id => ({ id })) }
+              : undefined
+          },
           include: {
             referentials: true,
             learners: true
           }
         });
-
-        return newPromotion;
+      }, {
+        timeout: 30000, // 30 second timeout for the transaction
+        maxWait: 35000  // Maximum time to wait for transaction
       });
+
+      // 4. Update session dates after promotion creation
+      if (referentialIds.length > 0) {
+        await this.updateSessionDatesInBatches(newPromotion.id, referentialIds);
+      }
+
+      return newPromotion;
     } catch (error) {
-      this.logger.error(`Promotion creation failed: ${error.message}`);
+      this.logger.error('Failed to create promotion:', error);
+      
+      if (error.message.includes('upload')) {
+        throw new BadRequestException(error.message);
+      }
+      
       throw error;
+    }
+  }
+
+  // New helper method to update session dates in batches
+  private async updateSessionDatesInBatches(promotionId: string, referentialIds: string[]) {
+    const promotion = await this.prisma.promotion.findUnique({
+      where: { id: promotionId },
+    });
+
+    // Process referentials in batches of 5
+    const batchSize = 5;
+    for (let i = 0; i < referentialIds.length; i += batchSize) {
+      const batch = referentialIds.slice(i, i + batchSize);
+      await Promise.all(
+        batch.map(async (refId) => {
+          const referential = await this.prisma.referential.findUnique({
+            where: { id: refId },
+            include: { sessions: true },
+          });
+
+          if (referential?.numberOfSessions > 1 && referential.sessions?.length === 2) {
+            const sessionLength = referential.sessionLength || 4;
+            const session1EndDate = new Date(promotion.startDate);
+            session1EndDate.setMonth(session1EndDate.getMonth() + sessionLength);
+
+            await this.prisma.$transaction([
+              this.prisma.session.update({
+                where: { id: referential.sessions[0].id },
+                data: {
+                  startDate: promotion.startDate,
+                  endDate: session1EndDate,
+                },
+              }),
+              this.prisma.session.update({
+                where: { id: referential.sessions[1].id },
+                data: {
+                  startDate: session1EndDate,
+                  endDate: promotion.endDate,
+                },
+              }),
+            ]);
+          }
+        })
+      );
     }
   }
 
@@ -198,5 +262,63 @@ export class PromotionsService {
       activeModules,
       upcomingEvents,
     };
+  }
+
+  // Add method to handle adding referentials to an existing promotion
+  async addReferentials(promotionId: string, referentialIds: string[]) {
+    const promotion = await this.prisma.promotion.findUnique({
+      where: { id: promotionId },
+    });
+
+    if (!promotion) {
+      throw new NotFoundException('Promotion not found');
+    }
+
+    return this.prisma.$transaction(async (prisma) => {
+      // Connect referentials to promotion
+      await prisma.promotion.update({
+        where: { id: promotionId },
+        data: {
+          referentials: {
+            connect: referentialIds.map(id => ({ id })),
+          },
+        },
+      });
+
+      // Update session dates for each referential
+      const referentials = await prisma.referential.findMany({
+        where: { id: { in: referentialIds } },
+        include: { sessions: true },
+      });
+
+      for (const referential of referentials) {
+        if (referential.numberOfSessions > 1 && referential.sessions?.length === 2) {
+          const sessionLength = referential.sessionLength || 4;
+          const promotionStartDate = promotion.startDate;
+          const promotionEndDate = promotion.endDate;
+
+          const session1EndDate = new Date(promotionStartDate);
+          session1EndDate.setMonth(session1EndDate.getMonth() + sessionLength);
+
+          await prisma.session.update({
+            where: { id: referential.sessions[0].id },
+            data: {
+              startDate: promotionStartDate,
+              endDate: session1EndDate,
+            },
+          });
+
+          await prisma.session.update({
+            where: { id: referential.sessions[1].id },
+            data: {
+              startDate: session1EndDate,
+              endDate: promotionEndDate,
+            },
+          });
+        }
+      }
+
+      return this.findOne(promotionId);
+    });
   }
 }

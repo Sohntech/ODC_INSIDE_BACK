@@ -20,14 +20,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
-
-// Update the CreateReferentialDto
-interface CreateReferentialDto {
-  name: string;
-  description?: string;
-  photoUrl?: string;
-  capacity: number;
-}
+import { CreateReferentialDto } from './dto/create-referential.dto';
 
 @ApiTags('referentials')
 @Controller('referentials')
@@ -51,7 +44,7 @@ export class ReferentialsController {
     @Body() formData: any,
     @UploadedFile() photoFile?: Express.Multer.File,
   ) {
-    const { name, capacity, description } = formData;
+    const { name, capacity, description, numberOfSessions, sessionLength } = formData;
 
     if (!name) {
       throw new BadRequestException('Name is required');
@@ -59,11 +52,16 @@ export class ReferentialsController {
     if (isNaN(capacity)) {
       throw new BadRequestException('Capacity must be a number');
     }
+    if (isNaN(numberOfSessions)) {
+      throw new BadRequestException('Number of sessions must be a number');
+    }
 
     const createData: CreateReferentialDto = {
       name,
       description,
       capacity: parseInt(capacity, 10),
+      numberOfSessions: parseInt(numberOfSessions, 10),
+      sessionLength: sessionLength ? parseInt(sessionLength, 10) : undefined,
     };
 
     if (photoFile) {
@@ -73,6 +71,11 @@ export class ReferentialsController {
       } catch (error) {
         this.logger.error(`Error uploading photo: ${error.message}`);
       }
+    }
+
+    // Validate session length if multiple sessions
+    if (createData.numberOfSessions > 1 && !createData.sessionLength) {
+      throw new BadRequestException('Session length is required when creating multiple sessions');
     }
 
     this.logger.log(`Creating referential with data: ${JSON.stringify(createData)}`);

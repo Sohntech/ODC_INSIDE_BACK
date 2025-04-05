@@ -15,14 +15,9 @@ export declare class CreateLearnerDto {
     gender: string;
     birthDate: Date;
     birthPlace: string;
-    refId?: string;
     promotionId: string;
+    refId?: string;
+    sessionId?: string;
     status?: LearnerStatus;
-    tutor: {
-        firstName: string;
-        lastName: string;
-        phone: string;
-        email: string;
-        address: string;
-    };
+    tutor: CreateTutorDto;
 }

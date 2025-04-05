@@ -30,17 +30,22 @@ let ReferentialsController = ReferentialsController_1 = class ReferentialsContro
         this.logger = new common_1.Logger(ReferentialsController_1.name);
     }
     async create(formData, photoFile) {
-        const { name, capacity, description } = formData;
+        const { name, capacity, description, numberOfSessions, sessionLength } = formData;
         if (!name) {
             throw new common_1.BadRequestException('Name is required');
         }
         if (isNaN(capacity)) {
             throw new common_1.BadRequestException('Capacity must be a number');
         }
+        if (isNaN(numberOfSessions)) {
+            throw new common_1.BadRequestException('Number of sessions must be a number');
+        }
         const createData = {
             name,
             description,
             capacity: parseInt(capacity, 10),
+            numberOfSessions: parseInt(numberOfSessions, 10),
+            sessionLength: sessionLength ? parseInt(sessionLength, 10) : undefined,
         };
         if (photoFile) {
             try {
@@ -50,6 +55,9 @@ let ReferentialsController = ReferentialsController_1 = class ReferentialsContro
             catch (error) {
                 this.logger.error(`Error uploading photo: ${error.message}`);
             }
+        }
+        if (createData.numberOfSessions > 1 && !createData.sessionLength) {
+            throw new common_1.BadRequestException('Session length is required when creating multiple sessions');
         }
         this.logger.log(`Creating referential with data: ${JSON.stringify(createData)}`);
         return this.referentialsService.create(createData);

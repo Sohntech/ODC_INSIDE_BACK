@@ -4,10 +4,10 @@ export declare class EventsController {
     constructor(eventsService: EventsService);
     create(data: any): Promise<{
         id: string;
+        promotionId: string;
         createdAt: Date;
         updatedAt: Date;
         description: string;
-        promotionId: string;
         startDate: Date;
         endDate: Date;
         type: string;
@@ -16,10 +16,10 @@ export declare class EventsController {
     }>;
     findAll(): Promise<{
         id: string;
+        promotionId: string;
         createdAt: Date;
         updatedAt: Date;
         description: string;
-        promotionId: string;
         startDate: Date;
         endDate: Date;
         type: string;
@@ -28,10 +28,10 @@ export declare class EventsController {
     }[]>;
     getUpcomingEvents(): Promise<{
         id: string;
+        promotionId: string;
         createdAt: Date;
         updatedAt: Date;
         description: string;
-        promotionId: string;
         startDate: Date;
         endDate: Date;
         type: string;
@@ -40,10 +40,10 @@ export declare class EventsController {
     }[]>;
     getEventsByPromotion(promotionId: string): Promise<{
         id: string;
+        promotionId: string;
         createdAt: Date;
         updatedAt: Date;
         description: string;
-        promotionId: string;
         startDate: Date;
         endDate: Date;
         type: string;
@@ -52,10 +52,10 @@ export declare class EventsController {
     }[]>;
     findOne(id: string): Promise<{
         id: string;
+        promotionId: string;
         createdAt: Date;
         updatedAt: Date;
         description: string;
-        promotionId: string;
         startDate: Date;
         endDate: Date;
         type: string;
@@ -64,10 +64,10 @@ export declare class EventsController {
     }>;
     update(id: string, data: any): Promise<{
         id: string;
+        promotionId: string;
         createdAt: Date;
         updatedAt: Date;
         description: string;
-        promotionId: string;
         startDate: Date;
         endDate: Date;
         type: string;

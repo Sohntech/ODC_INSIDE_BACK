@@ -26,42 +26,108 @@ let LearnersService = LearnersService_1 = class LearnersService {
         this.logger = new common_1.Logger(LearnersService_1.name);
     }
     async create(createLearnerDto, photoFile) {
-        let photoUrl;
-        let qrCodeUrl;
-        const referential = createLearnerDto.refId ?
-            await this.prisma.referential.findUnique({ where: { id: createLearnerDto.refId } })
-            : null;
-        const matricule = await matricule_utils_1.MatriculeUtils.generateLearnerMatricule(this.prisma, createLearnerDto.firstName, createLearnerDto.lastName, referential?.name);
-        try {
-            const qrCodeBuffer = await QRCode.toBuffer(matricule);
-            const qrCodeFile = {
-                fieldname: 'qrCode',
-                originalname: 'qrcode.png',
-                encoding: '7bit',
-                mimetype: 'image/png',
-                buffer: qrCodeBuffer,
-                size: qrCodeBuffer.length,
-                stream: null,
-                destination: '',
-                filename: 'qrcode.png',
-                path: '',
-            };
-            const qrCodeResult = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
-            qrCodeUrl = qrCodeResult.url;
-        }
-        catch (error) {
-            this.logger.error('Failed to generate or upload QR code:', error);
-        }
-        if (photoFile) {
+        return this.prisma.$transaction(async (prisma) => {
+            const promotion = await prisma.promotion.findUnique({
+                where: { id: createLearnerDto.promotionId },
+                include: {
+                    referentials: true
+                }
+            });
+            if (!promotion) {
+                throw new common_1.NotFoundException('Promotion not found');
+            }
+            if (createLearnerDto.refId) {
+                const referentialExists = promotion.referentials.some(ref => ref.id === createLearnerDto.refId);
+                if (!referentialExists) {
+                    throw new common_1.BadRequestException(`The referential with ID ${createLearnerDto.refId} is not associated with the promotion ${promotion.name}`);
+                }
+                const referential = await prisma.referential.findUnique({
+                    where: { id: createLearnerDto.refId },
+                    include: {
+                        sessions: {
+                            select: {
+                                id: true,
+                                name: true,
+                                capacity: true
+                            }
+                        }
+                    }
+                });
+                if (!referential) {
+                    throw new common_1.NotFoundException('Referential not found');
+                }
+                if (referential.numberOfSessions > 1) {
+                    if (!createLearnerDto.sessionId) {
+                        throw new common_1.BadRequestException(`This referential has multiple sessions. Please specify a sessionId. Available sessions: ${referential.sessions.map(s => s.name).join(', ')}`);
+                    }
+                    const session = referential.sessions.find(s => s.id === createLearnerDto.sessionId);
+                    if (!session) {
+                        throw new common_1.BadRequestException(`Invalid session ID. Available sessions for this referential: ${referential.sessions.map(s => s.name).join(', ')}`);
+                    }
+                    const sessionLearnerCount = await prisma.learner.count({
+                        where: { sessionId: createLearnerDto.sessionId }
+                    });
+                    if (sessionLearnerCount >= session.capacity) {
+                        throw new common_1.BadRequestException(`Session ${session.name} has reached its maximum capacity of ${session.capacity} learners`);
+                    }
+                }
+                else if (createLearnerDto.sessionId) {
+                    throw new common_1.BadRequestException('Session ID should not be provided for single-session referentials');
+                }
+            }
+            let photoUrl;
+            let qrCodeUrl;
+            const referential = createLearnerDto.refId ?
+                await prisma.referential.findUnique({ where: { id: createLearnerDto.refId } })
+                : null;
+            const matricule = await matricule_utils_1.MatriculeUtils.generateLearnerMatricule(prisma, createLearnerDto.firstName, createLearnerDto.lastName, referential?.name);
             try {
-                const result = await this.cloudinary.uploadFile(photoFile, 'learners');
-                photoUrl = result.url;
+                const qrCodeBuffer = await QRCode.toBuffer(matricule);
+                const qrCodeFile = {
+                    fieldname: 'qrCode',
+                    originalname: 'qrcode.png',
+                    encoding: '7bit',
+                    mimetype: 'image/png',
+                    buffer: qrCodeBuffer,
+                    size: qrCodeBuffer.length,
+                    stream: null,
+                    destination: '',
+                    filename: 'qrcode.png',
+                    path: '',
+                };
+                const qrCodeResult = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
+                qrCodeUrl = qrCodeResult.url;
             }
             catch (error) {
-                this.logger.error('Failed to upload photo:', error);
+                this.logger.error('Failed to generate or upload QR code:', error);
             }
-        }
-        return this.prisma.$transaction(async (prisma) => {
+            if (photoFile) {
+                try {
+                    const result = await this.cloudinary.uploadFile(photoFile, 'learners');
+                    photoUrl = result.url;
+                }
+                catch (error) {
+                    this.logger.error('Failed to upload photo:', error);
+                }
+            }
+            if (createLearnerDto.refId) {
+                const referential = await prisma.referential.findUnique({
+                    where: { id: createLearnerDto.refId },
+                    include: { sessions: true }
+                });
+                if (!referential) {
+                    throw new common_1.NotFoundException('Referential not found');
+                }
+                if (referential.numberOfSessions > 1) {
+                    if (!createLearnerDto.sessionId) {
+                        throw new common_1.BadRequestException('Session ID is required for multi-session referentials');
+                    }
+                    const sessionExists = referential.sessions.some(s => s.id === createLearnerDto.sessionId);
+                    if (!sessionExists) {
+                        throw new common_1.BadRequestException('Invalid session ID for this referential');
+                    }
+                }
+            }
             const existingLearner = await prisma.learner.findFirst({
                 where: {
                     OR: [
@@ -121,7 +187,12 @@ let LearnersService = LearnersService_1 = class LearnersService {
                             bag: false,
                             polo: false
                         }
-                    }
+                    },
+                    session: createLearnerDto.sessionId ? {
+                        connect: {
+                            id: createLearnerDto.sessionId
+                        }
+                    } : undefined,
                 },
                 include: {
                     user: true,
@@ -129,7 +200,8 @@ let LearnersService = LearnersService_1 = class LearnersService {
                     referential: true,
                     tutor: true,
                     kit: true,
-                    statusHistory: true
+                    statusHistory: true,
+                    session: true
                 }
             });
             await prisma.learnerStatusHistory.create({
@@ -175,6 +247,29 @@ let LearnersService = LearnersService_1 = class LearnersService {
         });
         if (!learner) {
             throw new common_1.NotFoundException('Apprenant non trouvé');
+        }
+        return learner;
+    }
+    async findByEmail(email) {
+        const learner = await this.prisma.learner.findFirst({
+            where: {
+                user: {
+                    email: email
+                }
+            },
+            include: {
+                user: true,
+                referential: true,
+                promotion: true,
+                tutor: true,
+                kit: true,
+                attendances: true,
+                grades: true,
+                documents: true,
+            },
+        });
+        if (!learner) {
+            throw new common_1.NotFoundException(`No learner found with email ${email}`);
         }
         return learner;
     }

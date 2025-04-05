@@ -22,6 +22,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole, AbsenceStatus } from '@prisma/client';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { UpdateAbsenceStatusDto } from './dto/update-absence-status.dto';
+import { CoachScanResponse, LearnerScanResponse } from './interfaces/scan-response.interface';
 
 @ApiTags('attendance')
 @Controller('attendance')
@@ -34,6 +35,17 @@ export class AttendanceController {
     private readonly attendanceService: AttendanceService,
     private readonly cloudinaryService: CloudinaryService
   ) {}
+
+  @Post('scan')
+  @ApiOperation({ summary: 'Scan QR code for attendance' })
+  @ApiResponse({ status: 200, description: 'Successfully scanned' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 409, description: 'Already scanned today' })
+  async scan(
+    @Body('matricule') matricule: string
+  ): Promise<LearnerScanResponse | CoachScanResponse> {
+    return this.attendanceService.scan(matricule);
+  }
 
   @Post('scan/learner')
   @Roles('VIGIL')

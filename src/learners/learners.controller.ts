@@ -11,6 +11,8 @@ import {
   HttpStatus,
   Patch,
   Query,
+  ForbiddenException,
+  Request,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
@@ -18,8 +20,9 @@ import { LearnersService } from './learners.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole, LearnerStatus } from '@prisma/client';
+import { UserRole, LearnerStatus, Learner } from '@prisma/client';
 import { ReplaceLearnerDto, UpdateStatusDto } from './dto/update-status.dto';
+
 
 @ApiTags('learners')
 @Controller('learners')
@@ -94,34 +97,50 @@ export class LearnersController {
     return this.learnersService.getAttendanceStats(id);
   }
 
-  // ...existing code...
+  @Get('email/:email')
+  @UseGuards(JwtAuthGuard)  // Remove RolesGuard to allow all authenticated users
+  @ApiOperation({ summary: 'Find a learner by email' })
+  @ApiResponse({ status: 200, description: 'Returns the learner' })
+  @ApiResponse({ status: 404, description: 'Learner not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Can only access own data' })
+  async findByEmail(
+    @Param('email') email: string,
+    @Request() req
+  ): Promise<Learner> {
+    console.log('Hitting findByEmail endpoint with email:', email); // Add this log
+    // Check if user is trying to access their own data or is an admin
+    if (req.user.role !== UserRole.ADMIN && req.user.email !== email) {
+      throw new ForbiddenException('You can only access your own data');
+    }
+    return this.learnersService.findByEmail(email);
+  }
 
-@Patch(':id/status')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
-async patchUpdateStatus(
-  @Param('id') id: string,
-  @Body() updateStatusDto: UpdateStatusDto
-) {
-  return this.learnersService.updateLearnerStatus(id, updateStatusDto);
-}
+  @Patch(':id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async patchUpdateStatus(
+    @Param('id') id: string,
+    @Body() updateStatusDto: UpdateStatusDto
+  ) {
+    return this.learnersService.updateLearnerStatus(id, updateStatusDto);
+  }
 
-@Post('replace')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
-async replaceLearner(@Body() replacementDto: ReplaceLearnerDto) {
-  return this.learnersService.replaceLearner(replacementDto);
-}
+  @Post('replace')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async replaceLearner(@Body() replacementDto: ReplaceLearnerDto) {
+    return this.learnersService.replaceLearner(replacementDto);
+  }
 
-@Get('waiting-list')
-@UseGuards(JwtAuthGuard)
-async getWaitingList(@Query('promotionId') promotionId?: string) {
-  return this.learnersService.getWaitingList(promotionId);
-}
+  @Get('waiting-list')
+  @UseGuards(JwtAuthGuard)
+  async getWaitingList(@Query('promotionId') promotionId?: string) {
+    return this.learnersService.getWaitingList(promotionId);
+  }
 
-@Get(':id/status-history')
-@UseGuards(JwtAuthGuard)
-async getStatusHistory(@Param('id') id: string) {
-  return this.learnersService.getStatusHistory(id);
-}
+  @Get(':id/status-history')
+  @UseGuards(JwtAuthGuard)
+  async getStatusHistory(@Param('id') id: string) {
+    return this.learnersService.getStatusHistory(id);
+  }
 }

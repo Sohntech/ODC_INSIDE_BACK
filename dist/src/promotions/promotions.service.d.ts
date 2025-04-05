@@ -8,6 +8,7 @@ export declare class PromotionsService {
     private readonly logger;
     constructor(prisma: PrismaService, cloudinary: CloudinaryService);
     create(data: CreatePromotionDto, photoFile?: Express.Multer.File): Promise<Promotion>;
+    private updateSessionDatesInBatches;
     findAll(): Promise<Promotion[]>;
     findOne(id: string): Promise<Promotion>;
     update(id: string, data: Partial<Promotion>): Promise<Promotion>;
@@ -17,5 +18,15 @@ export declare class PromotionsService {
         feminizationRate: number;
         activeModules: number;
         upcomingEvents: number;
+    }>;
+    addReferentials(promotionId: string, referentialIds: string[]): Promise<{
+        name: string;
+        id: string;
+        photoUrl: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.PromotionStatus;
+        startDate: Date;
+        endDate: Date;
     }>;
 }

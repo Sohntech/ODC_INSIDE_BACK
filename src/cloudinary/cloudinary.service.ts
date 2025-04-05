@@ -7,6 +7,8 @@ import * as streamifier from 'streamifier';
 export class CloudinaryService {
   private readonly logger = new Logger(CloudinaryService.name);
   private isConfigured = false;
+  private readonly maxRetries = 3;
+  private readonly chunkSize = 5242880; // 5MB chunks
 
   constructor(private configService: ConfigService) {
     const cloudName = this.configService.get('CLOUDINARY_CLOUD_NAME');
@@ -39,37 +41,50 @@ export class CloudinaryService {
     }
   }
 
-  async uploadFile(file: Express.Multer.File, folder: string): Promise<{ url: string }> {
-    if (!this.isConfigured) {
-      throw new Error('Cloudinary is not configured');
-    }
+  async uploadFile(
+    file: Express.Multer.File,
+    folder: string,
+    retryCount = 0
+  ): Promise<{ url: string }> {
+    try {
+      this.logger.log(`Attempting to upload file ${file.originalname} to folder ${folder}`);
 
-    if (!file || !file.buffer) {
-      this.logger.error('File or file buffer is missing');
-      throw new Error('File buffer is missing');
-    }
+      // Set specific upload options
+      const uploadOptions = {
+        folder,
+        resource_type: "auto" as "auto",
+        timeout: 120000, // 2 minutes timeout
+        chunk_size: this.chunkSize,
+      };
 
-    this.logger.log(`Attempting to upload file ${file.originalname} to folder ${folder}`);
-
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          resource_type: 'auto',
-        },
-        (error, result) => {
-          if (error) {
-            this.logger.error('Upload failed:', error);
-            reject(error);
-            return;
+      return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          uploadOptions,
+          (error, result) => {
+            if (error) {
+              this.logger.error('Upload failed:', error);
+              reject(error);
+            } else {
+              resolve({ url: result.secure_url });
+            }
           }
-          this.logger.log(`File uploaded successfully. URL: ${result.secure_url}`);
-          resolve({ url: result.secure_url });
-        }
-      );
+        );
 
-      streamifier.createReadStream(file.buffer).pipe(uploadStream);
-    });
+        // Stream the file in chunks
+        streamifier.createReadStream(file.buffer).pipe(uploadStream);
+      });
+    } catch (error) {
+      this.logger.error(`Upload failed (attempt ${retryCount + 1}):`, error);
+
+      // Implement retry logic
+      if (retryCount < this.maxRetries) {
+        this.logger.log(`Retrying upload (attempt ${retryCount + 2})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return this.uploadFile(file, folder, retryCount + 1);
+      }
+
+      throw error;
+    }
   }
 
   async deleteFile(publicId: string): Promise<void> {

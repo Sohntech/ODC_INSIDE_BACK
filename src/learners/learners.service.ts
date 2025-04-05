@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Gender, Learner, LearnerStatus, PrismaClient } from '@prisma/client';
@@ -20,56 +20,154 @@ export class LearnersService {
   ) {}
 
   async create(createLearnerDto: CreateLearnerDto, photoFile?: Express.Multer.File): Promise<Learner> {
-    // Handle file uploads before transaction
-    let photoUrl: string | undefined;
-    let qrCodeUrl: string | undefined;
-
-    // Generate matricule first (outside transaction to prepare QR code)
-    const referential = createLearnerDto.refId ? 
-      await this.prisma.referential.findUnique({ where: { id: createLearnerDto.refId } }) 
-      : null;
-
-    const matricule = await MatriculeUtils.generateLearnerMatricule(
-      this.prisma,
-      createLearnerDto.firstName,
-      createLearnerDto.lastName,
-      referential?.name
-    );
-
-    // Generate and upload QR code
-    try {
-      const qrCodeBuffer = await QRCode.toBuffer(matricule);
-      const qrCodeFile = {
-        fieldname: 'qrCode',
-        originalname: 'qrcode.png',
-        encoding: '7bit',
-        mimetype: 'image/png',
-        buffer: qrCodeBuffer,
-        size: qrCodeBuffer.length,
-        stream: null,
-        destination: '',
-        filename: 'qrcode.png',
-        path: '',
-      };
-
-      const qrCodeResult = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
-      qrCodeUrl = qrCodeResult.url;
-    } catch (error) {
-      this.logger.error('Failed to generate or upload QR code:', error);
-    }
-
-    // Handle photo upload
-    if (photoFile) {
-      try {
-        const result = await this.cloudinary.uploadFile(photoFile, 'learners');
-        photoUrl = result.url;
-      } catch (error) {
-        this.logger.error('Failed to upload photo:', error);
-      }
-    }
-
-    // Start transaction with increased timeout
     return this.prisma.$transaction(async (prisma) => {
+      // First, verify promotion and referential relationship
+      const promotion = await prisma.promotion.findUnique({
+        where: { id: createLearnerDto.promotionId },
+        include: {
+          referentials: true
+        }
+      });
+
+      if (!promotion) {
+        throw new NotFoundException('Promotion not found');
+      }
+
+      // Check if referential is provided and exists in promotion
+      if (createLearnerDto.refId) {
+        const referentialExists = promotion.referentials.some(
+          ref => ref.id === createLearnerDto.refId
+        );
+
+        if (!referentialExists) {
+          throw new BadRequestException(
+            `The referential with ID ${createLearnerDto.refId} is not associated with the promotion ${promotion.name}`
+          );
+        }
+
+        // Now fetch the referential with sessions for further validation
+        const referential = await prisma.referential.findUnique({
+          where: { id: createLearnerDto.refId },
+          include: { 
+            sessions: {
+              select: {
+                id: true,
+                name: true,
+                capacity: true
+              }
+            }
+          }
+        });
+
+        if (!referential) {
+          throw new NotFoundException('Referential not found');
+        }
+
+        // Validate sessions if multiple sessions exist
+        if (referential.numberOfSessions > 1) {
+          if (!createLearnerDto.sessionId) {
+            throw new BadRequestException(
+              `This referential has multiple sessions. Please specify a sessionId. Available sessions: ${referential.sessions.map(s => s.name).join(', ')}`
+            );
+          }
+
+          const session = referential.sessions.find(s => s.id === createLearnerDto.sessionId);
+          if (!session) {
+            throw new BadRequestException(
+              `Invalid session ID. Available sessions for this referential: ${referential.sessions.map(s => s.name).join(', ')}`
+            );
+          }
+
+          // Check session capacity
+          const sessionLearnerCount = await prisma.learner.count({
+            where: { sessionId: createLearnerDto.sessionId }
+          });
+
+          if (sessionLearnerCount >= session.capacity) {
+            throw new BadRequestException(
+              `Session ${session.name} has reached its maximum capacity of ${session.capacity} learners`
+            );
+          }
+        } else if (createLearnerDto.sessionId) {
+          throw new BadRequestException(
+            'Session ID should not be provided for single-session referentials'
+          );
+        }
+      }
+
+      // Handle file uploads before transaction
+      let photoUrl: string | undefined;
+      let qrCodeUrl: string | undefined;
+
+      // Generate matricule first (outside transaction to prepare QR code)
+      const referential = createLearnerDto.refId ? 
+        await prisma.referential.findUnique({ where: { id: createLearnerDto.refId } }) 
+        : null;
+
+      const matricule = await MatriculeUtils.generateLearnerMatricule(
+        prisma as PrismaClient,
+        createLearnerDto.firstName,
+        createLearnerDto.lastName,
+        referential?.name
+      );
+
+      // Generate and upload QR code
+      try {
+        const qrCodeBuffer = await QRCode.toBuffer(matricule);
+        const qrCodeFile = {
+          fieldname: 'qrCode',
+          originalname: 'qrcode.png',
+          encoding: '7bit',
+          mimetype: 'image/png',
+          buffer: qrCodeBuffer,
+          size: qrCodeBuffer.length,
+          stream: null,
+          destination: '',
+          filename: 'qrcode.png',
+          path: '',
+        };
+
+        const qrCodeResult = await this.cloudinary.uploadFile(qrCodeFile, 'qrcodes');
+        qrCodeUrl = qrCodeResult.url;
+      } catch (error) {
+        this.logger.error('Failed to generate or upload QR code:', error);
+      }
+
+      // Handle photo upload
+      if (photoFile) {
+        try {
+          const result = await this.cloudinary.uploadFile(photoFile, 'learners');
+          photoUrl = result.url;
+        } catch (error) {
+          this.logger.error('Failed to upload photo:', error);
+        }
+      }
+
+      // Validate session assignment
+      if (createLearnerDto.refId) {
+        const referential = await prisma.referential.findUnique({
+          where: { id: createLearnerDto.refId },
+          include: { sessions: true }
+        });
+
+        if (!referential) {
+          throw new NotFoundException('Referential not found');
+        }
+
+        if (referential.numberOfSessions > 1) {
+          if (!createLearnerDto.sessionId) {
+            throw new BadRequestException('Session ID is required for multi-session referentials');
+          }
+
+          // Verify session belongs to referential
+          const sessionExists = referential.sessions.some(s => s.id === createLearnerDto.sessionId);
+          if (!sessionExists) {
+            throw new BadRequestException('Invalid session ID for this referential');
+          }
+        }
+      }
+
+      // Check for existing learner
       const existingLearner = await prisma.learner.findFirst({
         where: {
           OR: [
@@ -85,10 +183,11 @@ export class LearnersService {
         );
       }
 
-      // Generate and hash password
+      // Generate password for the new learner
       const password = AuthUtils.generatePassword();
       const hashedPassword = await AuthUtils.hashPassword(password);
 
+      // Create learner only if all validations pass
       const learner = await prisma.learner.create({
         data: {
           matricule,
@@ -105,7 +204,7 @@ export class LearnersService {
           user: {
             create: {
               email: createLearnerDto.email,
-              password: hashedPassword,
+              password: hashedPassword, // Use the hashed password
               role: 'APPRENANT',
             },
           },
@@ -135,7 +234,12 @@ export class LearnersService {
               bag: false,
               polo: false
             }
-          }
+          },
+          session: createLearnerDto.sessionId ? {
+            connect: {
+              id: createLearnerDto.sessionId
+            }
+          } : undefined,
         },
         include: {
           user: true,
@@ -143,7 +247,8 @@ export class LearnersService {
           referential: true,
           tutor: true,
           kit: true,
-          statusHistory: true
+          statusHistory: true,
+          session: true
         }
       });
 
@@ -157,7 +262,7 @@ export class LearnersService {
         }
       });
 
-      // Send password email after transaction
+      // Send password email with the plain text password
       await AuthUtils.sendPasswordEmail(createLearnerDto.email, password, 'Apprenant');
 
       return learner;
@@ -197,6 +302,32 @@ export class LearnersService {
 
     if (!learner) {
       throw new NotFoundException('Apprenant non trouvé');
+    }
+
+    return learner;
+  }
+
+  async findByEmail(email: string): Promise<Learner> {
+    const learner = await this.prisma.learner.findFirst({
+      where: {
+        user: {
+          email: email
+        }
+      },
+      include: {
+        user: true,
+        referential: true,
+        promotion: true,
+        tutor: true,
+        kit: true,
+        attendances: true,
+        grades: true,
+        documents: true,
+      },
+    });
+
+    if (!learner) {
+      throw new NotFoundException(`No learner found with email ${email}`);
     }
 
     return learner;

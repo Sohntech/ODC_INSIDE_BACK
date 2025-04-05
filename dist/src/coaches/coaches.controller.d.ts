@@ -5,55 +5,55 @@ export declare class CoachesController {
     constructor(coachesService: CoachesService);
     create(createCoachDto: CreateCoachDto, photoFile?: Express.Multer.File): Promise<{
         id: string;
-        matricule: string;
         firstName: string;
         lastName: string;
         phone: string | null;
         photoUrl: string | null;
-        qrCode: string | null;
         userId: string;
-        refId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        matricule: string;
+        qrCode: string | null;
+        refId: string | null;
     }>;
     findAll(): Promise<{
         id: string;
-        matricule: string;
         firstName: string;
         lastName: string;
         phone: string | null;
         photoUrl: string | null;
-        qrCode: string | null;
         userId: string;
-        refId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        matricule: string;
+        qrCode: string | null;
+        refId: string | null;
     }[]>;
     findOne(id: string): Promise<{
         id: string;
-        matricule: string;
         firstName: string;
         lastName: string;
         phone: string | null;
         photoUrl: string | null;
-        qrCode: string | null;
         userId: string;
-        refId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        matricule: string;
+        qrCode: string | null;
+        refId: string | null;
     }>;
     update(id: string, data: any): Promise<{
         id: string;
-        matricule: string;
         firstName: string;
         lastName: string;
         phone: string | null;
         photoUrl: string | null;
-        qrCode: string | null;
         userId: string;
-        refId: string | null;
         createdAt: Date;
         updatedAt: Date;
+        matricule: string;
+        qrCode: string | null;
+        refId: string | null;
     }>;
     getAttendanceStats(id: string): Promise<{
         totalDays: number;
