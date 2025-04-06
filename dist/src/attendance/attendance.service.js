@@ -8,15 +8,17 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var AttendanceService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const schedule_1 = require("@nestjs/schedule");
 const client_1 = require("@prisma/client");
-let AttendanceService = class AttendanceService {
+let AttendanceService = AttendanceService_1 = class AttendanceService {
     constructor(prisma) {
         this.prisma = prisma;
+        this.logger = new common_1.Logger(AttendanceService_1.name);
     }
     async findLearnerByMatricule(matricule) {
         const learner = await this.prisma.learner.findUnique({
@@ -372,49 +374,62 @@ let AttendanceService = class AttendanceService {
         });
     }
     async markAbsentees() {
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const learners = await this.prisma.learner.findMany({
-            where: {
-                status: 'ACTIVE',
-            },
-        });
-        for (const learner of learners) {
-            const attendance = await this.prisma.learnerAttendance.findFirst({
+        try {
+            this.logger.log('Starting markAbsentees cron job...');
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            this.logger.log(`Processing absences for date: ${today.toISOString()}`);
+            const learners = await this.prisma.learner.findMany({
                 where: {
-                    learnerId: learner.id,
-                    date: today,
+                    status: 'ACTIVE',
                 },
             });
-            if (!attendance) {
-                await this.prisma.learnerAttendance.create({
-                    data: {
-                        date: today,
-                        isPresent: false,
-                        isLate: false,
+            this.logger.log(`Found ${learners.length} active learners to process`);
+            for (const learner of learners) {
+                const attendance = await this.prisma.learnerAttendance.findFirst({
+                    where: {
                         learnerId: learner.id,
-                    },
-                });
-            }
-        }
-        const coaches = await this.prisma.coach.findMany();
-        for (const coach of coaches) {
-            const attendance = await this.prisma.coachAttendance.findFirst({
-                where: {
-                    coachId: coach.id,
-                    date: today,
-                },
-            });
-            if (!attendance) {
-                await this.prisma.coachAttendance.create({
-                    data: {
                         date: today,
-                        isPresent: false,
-                        isLate: false,
-                        coachId: coach.id,
                     },
                 });
+                if (!attendance) {
+                    this.logger.log(`Marking learner ${learner.matricule} as absent`);
+                    await this.prisma.learnerAttendance.create({
+                        data: {
+                            date: today,
+                            isPresent: false,
+                            isLate: false,
+                            learnerId: learner.id,
+                        },
+                    });
+                }
             }
+            const coaches = await this.prisma.coach.findMany({});
+            this.logger.log(`Found ${coaches.length} active coaches to process`);
+            for (const coach of coaches) {
+                const attendance = await this.prisma.coachAttendance.findFirst({
+                    where: {
+                        coachId: coach.id,
+                        date: today,
+                    },
+                });
+                if (!attendance) {
+                    this.logger.log(`Marking coach ${coach.matricule} as absent`);
+                    await this.prisma.coachAttendance.create({
+                        data: {
+                            date: today,
+                            isPresent: false,
+                            isLate: false,
+                            coachId: coach.id,
+                        },
+                    });
+                }
+            }
+            this.logger.log('Completed markAbsentees cron job successfully');
+        }
+        catch (error) {
+            this.logger.error('Error in markAbsentees cron job:', error);
+            throw error;
         }
     }
 };
@@ -425,7 +440,7 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AttendanceService.prototype, "markAbsentees", null);
-exports.AttendanceService = AttendanceService = __decorate([
+exports.AttendanceService = AttendanceService = AttendanceService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], AttendanceService);

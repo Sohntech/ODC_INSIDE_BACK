@@ -68,6 +68,10 @@ let AttendanceController = AttendanceController_1 = class AttendanceController {
     async getYearlyStats(year) {
         return this.attendanceService.getYearlyStats(parseInt(year, 10));
     }
+    async manualMarkAbsences() {
+        this.logger.log('Manually triggering markAbsentees');
+        return this.attendanceService.markAbsentees();
+    }
 };
 exports.AttendanceController = AttendanceController;
 __decorate([
@@ -157,6 +161,14 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "getYearlyStats", null);
+__decorate([
+    (0, common_1.Post)('mark-absences'),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Manually trigger absence marking' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AttendanceController.prototype, "manualMarkAbsences", null);
 exports.AttendanceController = AttendanceController = AttendanceController_1 = __decorate([
     (0, swagger_1.ApiTags)('attendance'),
     (0, common_1.Controller)('attendance'),

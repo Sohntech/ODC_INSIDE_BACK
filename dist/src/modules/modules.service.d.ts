@@ -19,32 +19,32 @@ export declare class ModulesService {
     }): Promise<{
         learner: {
             id: string;
+            matricule: string;
             firstName: string;
             lastName: string;
-            phone: string;
-            photoUrl: string | null;
-            userId: string;
-            createdAt: Date;
-            updatedAt: Date;
-            matricule: string;
             address: string | null;
             gender: import(".prisma/client").$Enums.Gender;
             birthDate: Date;
             birthPlace: string;
+            phone: string;
+            photoUrl: string | null;
             status: import(".prisma/client").$Enums.LearnerStatus;
             qrCode: string;
+            userId: string;
             refId: string | null;
             promotionId: string;
+            createdAt: Date;
+            updatedAt: Date;
             sessionId: string | null;
         };
         module: {
-            name: string;
             id: string;
             photoUrl: string | null;
+            refId: string;
             createdAt: Date;
             updatedAt: Date;
-            refId: string;
             sessionId: string | null;
+            name: string;
             description: string | null;
             startDate: Date;
             endDate: Date;
@@ -54,10 +54,10 @@ export declare class ModulesService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;
-        learnerId: string;
     }>;
     updateGrade(gradeId: string, data: {
         value: number;
@@ -65,32 +65,32 @@ export declare class ModulesService {
     }): Promise<{
         learner: {
             id: string;
+            matricule: string;
             firstName: string;
             lastName: string;
-            phone: string;
-            photoUrl: string | null;
-            userId: string;
-            createdAt: Date;
-            updatedAt: Date;
-            matricule: string;
             address: string | null;
             gender: import(".prisma/client").$Enums.Gender;
             birthDate: Date;
             birthPlace: string;
+            phone: string;
+            photoUrl: string | null;
             status: import(".prisma/client").$Enums.LearnerStatus;
             qrCode: string;
+            userId: string;
             refId: string | null;
             promotionId: string;
+            createdAt: Date;
+            updatedAt: Date;
             sessionId: string | null;
         };
         module: {
-            name: string;
             id: string;
             photoUrl: string | null;
+            refId: string;
             createdAt: Date;
             updatedAt: Date;
-            refId: string;
             sessionId: string | null;
+            name: string;
             description: string | null;
             startDate: Date;
             endDate: Date;
@@ -100,10 +100,10 @@ export declare class ModulesService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;
-        learnerId: string;
     }>;
     getActiveModules(): Promise<Module[]>;
     getModulesByReferential(refId: string): Promise<Module[]>;

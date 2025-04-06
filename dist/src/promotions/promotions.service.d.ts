@@ -20,12 +20,12 @@ export declare class PromotionsService {
         upcomingEvents: number;
     }>;
     addReferentials(promotionId: string, referentialIds: string[]): Promise<{
-        name: string;
         id: string;
         photoUrl: string | null;
+        status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.PromotionStatus;
+        name: string;
         startDate: Date;
         endDate: Date;
     }>;

@@ -136,4 +136,12 @@ export class AttendanceController {
   async getYearlyStats(@Query('year') year: string) {
     return this.attendanceService.getYearlyStats(parseInt(year, 10));
   }
+
+  @Post('mark-absences')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Manually trigger absence marking' })
+  async manualMarkAbsences() {
+    this.logger.log('Manually triggering markAbsentees');
+    return this.attendanceService.markAbsentees();
+  }
 }
