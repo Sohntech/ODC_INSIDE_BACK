@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Body,
   Param,
   UseGuards,
@@ -20,7 +21,7 @@ import { PromotionsService } from './promotions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { Promotion, PromotionStatus, UserRole } from '@prisma/client';
 import { memoryStorage } from 'multer';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 
@@ -86,5 +87,19 @@ export class PromotionsController {
   @ApiOperation({ summary: 'Mettre à jour une promotion' })
   async update(@Param('id') id: string, @Body() data: any) {
     return this.promotionsService.update(id, data);
+  }
+
+  @Patch(':id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update promotion status' })
+  @ApiResponse({ status: 200, description: 'Status updated successfully' })
+  @ApiResponse({ status: 404, description: 'Promotion not found' })
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() updateStatusDto: { status: PromotionStatus }
+  ): Promise<Promotion> {
+    this.logger.debug(`Updating status for promotion ${id} to ${updateStatusDto.status}`);
+    return this.promotionsService.update(id, { status: updateStatusDto.status });
   }
 }

@@ -52,6 +52,10 @@ let PromotionsController = PromotionsController_1 = class PromotionsController {
     async update(id, data) {
         return this.promotionsService.update(id, data);
     }
+    async updateStatus(id, updateStatusDto) {
+        this.logger.debug(`Updating status for promotion ${id} to ${updateStatusDto.status}`);
+        return this.promotionsService.update(id, { status: updateStatusDto.status });
+    }
 };
 exports.PromotionsController = PromotionsController;
 __decorate([
@@ -108,6 +112,19 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], PromotionsController.prototype, "update", null);
+__decorate([
+    (0, common_1.Patch)(':id/status'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Update promotion status' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Status updated successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Promotion not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PromotionsController.prototype, "updateStatus", null);
 exports.PromotionsController = PromotionsController = PromotionsController_1 = __decorate([
     (0, swagger_1.ApiTags)('promotions'),
     (0, common_1.Controller)('promotions'),
