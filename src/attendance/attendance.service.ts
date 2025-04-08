@@ -443,74 +443,85 @@ export class AttendanceService {
     });
   }
 
-  @Cron('0 0 13 * * 1-5') // Monday to Friday at 13:00
+  @Cron('0 0 15 * * 1-5')
   async markAbsentees() {
     try {
       this.logger.log('Starting markAbsentees cron job...');
       
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      this.logger.log(`Processing absences for date: ${today.toISOString()}`);
-  
-      // Mark learners absent
-      const learners = await this.prisma.learner.findMany({
-        where: {
-          status: 'ACTIVE',
-        },
-      });
-  
-      this.logger.log(`Found ${learners.length} active learners to process`);
-  
-      for (const learner of learners) {
-        const attendance = await this.prisma.learnerAttendance.findFirst({
+
+      await this.prisma.$transaction(async (prisma) => {
+        // Get all active learners
+        const learners = await prisma.learner.findMany({
           where: {
-            learnerId: learner.id,
-            date: today,
+            status: 'ACTIVE'
           },
+          select: {
+            id: true,
+            matricule: true
+          }
         });
-  
-        if (!attendance) {
-          this.logger.log(`Marking learner ${learner.matricule} as absent`);
-          await this.prisma.learnerAttendance.create({
-            data: {
-              date: today,
-              isPresent: false,
-              isLate: false,
+
+        this.logger.log(`Found ${learners.length} active learners to process`);
+
+        for (const learner of learners) {
+          const existingAttendance = await prisma.learnerAttendance.findFirst({
+            where: {
               learnerId: learner.id,
-            },
-          });
-        }
-      }
-  
-      // Mark coaches absent
-      const coaches = await this.prisma.coach.findMany({
-        
-      });
-  
-      this.logger.log(`Found ${coaches.length} active coaches to process`);
-  
-      for (const coach of coaches) {
-        const attendance = await this.prisma.coachAttendance.findFirst({
-          where: {
-            coachId: coach.id,
-            date: today,
-          },
-        });
-  
-        if (!attendance) {
-          this.logger.log(`Marking coach ${coach.matricule} as absent`);
-          await this.prisma.coachAttendance.create({
-            data: {
               date: today,
-              isPresent: false,
-              isLate: false,
-              coachId: coach.id,
-            },
+            }
           });
+
+          if (!existingAttendance) {
+            this.logger.log(`Marking learner ${learner.matricule} as absent`);
+            await prisma.learnerAttendance.create({
+              data: {
+                date: today,
+                isPresent: false,
+                isLate: false,
+                learnerId: learner.id,
+              }
+            });
+          } else {
+            this.logger.log(`Learner ${learner.matricule} already has attendance record for today`);
+          }
         }
-      }
-  
+
+        // Get all coaches (without status filter)
+        const coaches = await prisma.coach.findMany({
+          select: {
+            id: true,
+            matricule: true
+          }
+        });
+
+        this.logger.log(`Found ${coaches.length} coaches to process`);
+
+        for (const coach of coaches) {
+          const existingAttendance = await prisma.coachAttendance.findFirst({
+            where: {
+              coachId: coach.id,
+              date: today,
+            }
+          });
+
+          if (!existingAttendance) {
+            this.logger.log(`Marking coach ${coach.matricule} as absent`);
+            await prisma.coachAttendance.create({
+              data: {
+                date: today,
+                isPresent: false,
+                isLate: false,
+                coachId: coach.id,
+              }
+            });
+          } else {
+            this.logger.log(`Coach ${coach.matricule} already has attendance record for today`);
+          }
+        }
+      });
+
       this.logger.log('Completed markAbsentees cron job successfully');
     } catch (error) {
       this.logger.error('Error in markAbsentees cron job:', error);

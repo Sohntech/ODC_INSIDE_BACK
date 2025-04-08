@@ -150,31 +150,54 @@ let PromotionsService = PromotionsService_1 = class PromotionsService {
         return promotion;
     }
     async update(id, data) {
-        return await this.prisma.$transaction(async (prisma) => {
-            const promotion = await this.findOne(id);
-            if (data.status === client_1.PromotionStatus.ACTIVE) {
-                const activePromotion = await prisma.promotion.findFirst({
-                    where: {
-                        status: client_1.PromotionStatus.ACTIVE,
-                        id: { not: id },
+        try {
+            return await this.prisma.$transaction(async (prisma) => {
+                const promotion = await prisma.promotion.findUnique({
+                    where: { id },
+                    include: {
+                        referentials: true,
+                        learners: true,
+                    }
+                });
+                if (!promotion) {
+                    throw new common_1.NotFoundException(`Promotion with ID ${id} not found`);
+                }
+                if (data.status !== undefined) {
+                    if (data.status === client_1.PromotionStatus.ACTIVE) {
+                        const activePromotion = await prisma.promotion.findFirst({
+                            where: {
+                                status: client_1.PromotionStatus.ACTIVE,
+                                id: { not: id },
+                            },
+                        });
+                        if (activePromotion) {
+                            this.logger.log(`Deactivating current active promotion: ${activePromotion.id}`);
+                            await prisma.promotion.update({
+                                where: { id: activePromotion.id },
+                                data: { status: client_1.PromotionStatus.INACTIVE }
+                            });
+                        }
+                    }
+                }
+                const updatedPromotion = await prisma.promotion.update({
+                    where: { id },
+                    data,
+                    include: {
+                        learners: true,
+                        referentials: true,
                     },
                 });
-                if (activePromotion) {
-                    await prisma.promotion.update({
-                        where: { id: activePromotion.id },
-                        data: { status: client_1.PromotionStatus.INACTIVE }
-                    });
-                }
-            }
-            return prisma.promotion.update({
-                where: { id },
-                data,
-                include: {
-                    learners: true,
-                    referentials: true,
-                },
+                this.logger.log(`Successfully updated promotion ${id} status to ${updatedPromotion.status}`);
+                return updatedPromotion;
+            }, {
+                timeout: 30000,
+                maxWait: 35000
             });
-        });
+        }
+        catch (error) {
+            this.logger.error(`Error updating promotion ${id}:`, error);
+            throw error;
+        }
     }
     async getActivePromotion() {
         const promotion = await this.prisma.promotion.findFirst({
