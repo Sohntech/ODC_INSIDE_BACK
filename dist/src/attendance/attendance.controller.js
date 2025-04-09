@@ -72,6 +72,9 @@ let AttendanceController = AttendanceController_1 = class AttendanceController {
         this.logger.log('Manually triggering markAbsentees');
         return this.attendanceService.markAbsentees();
     }
+    async getPromotionAttendance(promotionId, startDate, endDate) {
+        return this.attendanceService.getPromotionAttendance(promotionId, new Date(startDate), new Date(endDate));
+    }
 };
 exports.AttendanceController = AttendanceController;
 __decorate([
@@ -169,6 +172,19 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "manualMarkAbsences", null);
+__decorate([
+    (0, common_1.Get)('promotion/:promotionId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get promotion attendance stats between dates' }),
+    (0, swagger_1.ApiParam)({ name: 'promotionId', description: 'ID of the promotion' }),
+    (0, swagger_1.ApiQuery)({ name: 'startDate', description: 'Start date (YYYY-MM-DD)' }),
+    (0, swagger_1.ApiQuery)({ name: 'endDate', description: 'End date (YYYY-MM-DD)' }),
+    __param(0, (0, common_1.Param)('promotionId')),
+    __param(1, (0, common_1.Query)('startDate')),
+    __param(2, (0, common_1.Query)('endDate')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], AttendanceController.prototype, "getPromotionAttendance", null);
 exports.AttendanceController = AttendanceController = AttendanceController_1 = __decorate([
     (0, swagger_1.ApiTags)('attendance'),
     (0, common_1.Controller)('attendance'),

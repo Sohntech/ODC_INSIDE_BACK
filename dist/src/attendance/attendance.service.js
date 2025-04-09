@@ -373,6 +373,70 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             }
         });
     }
+    async getPromotionAttendance(promotionId, startDate, endDate) {
+        try {
+            const promotion = await this.prisma.promotion.findUnique({
+                where: { id: promotionId },
+                include: {
+                    learners: true
+                }
+            });
+            if (!promotion) {
+                throw new common_1.NotFoundException('Promotion not found');
+            }
+            const learnerIds = promotion.learners.map(learner => learner.id);
+            const attendanceRecords = await this.prisma.learnerAttendance.groupBy({
+                by: ['date'],
+                where: {
+                    learnerId: { in: learnerIds },
+                    date: {
+                        gte: startDate,
+                        lte: endDate
+                    }
+                },
+                _count: {
+                    _all: true
+                }
+            });
+            const results = await Promise.all(attendanceRecords.map(async (record) => {
+                const dateAttendance = await this.prisma.learnerAttendance.groupBy({
+                    by: ['isPresent', 'isLate'],
+                    where: {
+                        learnerId: { in: learnerIds },
+                        date: record.date
+                    },
+                    _count: true
+                });
+                const stats = {
+                    date: record.date.toISOString().split('T')[0],
+                    presentCount: 0,
+                    lateCount: 0,
+                    absentCount: 0
+                };
+                dateAttendance.forEach(attendance => {
+                    if (attendance.isPresent && !attendance.isLate) {
+                        stats.presentCount = attendance._count;
+                    }
+                    else if (attendance.isPresent && attendance.isLate) {
+                        stats.lateCount = attendance._count;
+                    }
+                    else {
+                        stats.absentCount = attendance._count;
+                    }
+                });
+                const totalLearners = learnerIds.length;
+                const accountedFor = stats.presentCount + stats.lateCount;
+                stats.absentCount = totalLearners - accountedFor;
+                return stats;
+            }));
+            results.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            return results;
+        }
+        catch (error) {
+            this.logger.error('Error fetching promotion attendance:', error);
+            throw error;
+        }
+    }
     async markAbsentees() {
         try {
             this.logger.log('Starting markAbsentees cron job...');

@@ -396,6 +396,58 @@ export class AttendanceService {
     return { months };
   }
 
+  async getWeeklyStats(year: number) {
+    try {
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31);
+
+      // Get all attendance records for the year
+      const attendanceRecords = await this.prisma.learnerAttendance.findMany({
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+      });
+
+      // Initialize weeks array (52 weeks)
+      const weeks = Array.from({ length: 52 }, (_, i) => ({
+        weekNumber: i + 1,
+        present: 0,
+        late: 0,
+        absent: 0,
+      }));
+
+      // Process each attendance record
+      attendanceRecords.forEach(record => {
+        const weekNumber = this.getWeekNumber(record.date) - 1; // 0-based index
+        
+        if (weekNumber >= 0 && weekNumber < 52) {
+          if (record.isPresent && !record.isLate) {
+            weeks[weekNumber].present++;
+          } else if (record.isPresent && record.isLate) {
+            weeks[weekNumber].late++;
+          } else {
+            weeks[weekNumber].absent++;
+          }
+        }
+      });
+
+      return { weeks };
+    } catch (error) {
+      this.logger.error('Error getting weekly stats:', error);
+      throw error;
+    }
+  }
+
+  // Helper method to get week number
+  private getWeekNumber(date: Date): number {
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+    const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+  }
+
   async getScanHistory(
     type: 'LEARNER' | 'COACH',
     startDate: Date,
@@ -441,6 +493,90 @@ export class AttendanceService {
         date: 'desc'
       }
     });
+  }
+
+  async getPromotionAttendance(
+    promotionId: string,
+    startDate: Date,
+    endDate: Date
+  ) {
+    try {
+      // First verify if promotion exists
+      const promotion = await this.prisma.promotion.findUnique({
+        where: { id: promotionId },
+        include: {
+          learners: true
+        }
+      });
+
+      if (!promotion) {
+        throw new NotFoundException('Promotion not found');
+      }
+
+      // Get all learner IDs from the promotion
+      const learnerIds = promotion.learners.map(learner => learner.id);
+
+      // Get attendance records for these learners between the dates
+      const attendanceRecords = await this.prisma.learnerAttendance.groupBy({
+        by: ['date'],
+        where: {
+          learnerId: { in: learnerIds },
+          date: {
+            gte: startDate,
+            lte: endDate
+          }
+        },
+        _count: {
+          _all: true
+        }
+      });
+
+      // For each date, calculate present, late, and absent counts
+      const results = await Promise.all(
+        attendanceRecords.map(async (record) => {
+          const dateAttendance = await this.prisma.learnerAttendance.groupBy({
+            by: ['isPresent', 'isLate'],
+            where: {
+              learnerId: { in: learnerIds },
+              date: record.date
+            },
+            _count: true
+          });
+
+          const stats = {
+            date: record.date.toISOString().split('T')[0],
+            presentCount: 0,
+            lateCount: 0,
+            absentCount: 0
+          };
+
+          dateAttendance.forEach(attendance => {
+            if (attendance.isPresent && !attendance.isLate) {
+              stats.presentCount = attendance._count;
+            } else if (attendance.isPresent && attendance.isLate) {
+              stats.lateCount = attendance._count;
+            } else {
+              stats.absentCount = attendance._count;
+            }
+          });
+
+          // Calculate absent as total learners minus present and late
+          const totalLearners = learnerIds.length;
+          const accountedFor = stats.presentCount + stats.lateCount;
+          stats.absentCount = totalLearners - accountedFor;
+
+          return stats;
+        })
+      );
+
+      // Sort by date
+      results.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      return results;
+    } catch (error) {
+      this.logger.error('Error fetching promotion attendance:', error);
+      throw error;
+    }
   }
 
   @Cron('0 0 15 * * 1-5')

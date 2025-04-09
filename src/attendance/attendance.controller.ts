@@ -14,7 +14,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiParam } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -23,6 +23,8 @@ import { UserRole, AbsenceStatus } from '@prisma/client';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { UpdateAbsenceStatusDto } from './dto/update-absence-status.dto';
 import { CoachScanResponse, LearnerScanResponse } from './interfaces/scan-response.interface';
+import { MonthlyStats } from './interfaces/attendance-stats.interface';
+import { DailyStats } from './interfaces/attendance-stats.interface';
 
 @ApiTags('attendance')
 @Controller('attendance')
@@ -117,15 +119,22 @@ export class AttendanceController {
   }
 
   @Get('stats/daily')
-  async getDailyStats(@Query('date') date: string) {
+  @ApiOperation({ summary: 'Get daily attendance statistics' })
+  @ApiQuery({ name: 'date', description: 'Date (YYYY-MM-DD)', required: true })
+  @ApiResponse({ status: 200, description: 'Daily attendance statistics' })
+  async getDailyStats(@Query('date') date: string): Promise<DailyStats> {
     return this.attendanceService.getDailyStats(date);
   }
 
   @Get('stats/monthly')
+  @ApiOperation({ summary: 'Get monthly attendance statistics' })
+  @ApiQuery({ name: 'year', description: 'Year (YYYY)', required: true })
+  @ApiQuery({ name: 'month', description: 'Month (1-12)', required: true })
+  @ApiResponse({ status: 200, description: 'Monthly attendance statistics' })
   async getMonthlyStats(
     @Query('year') year: string,
     @Query('month') month: string,
-  ) {
+  ): Promise<MonthlyStats> {
     return this.attendanceService.getMonthlyStats(
       parseInt(year, 10),
       parseInt(month, 10),
@@ -137,11 +146,35 @@ export class AttendanceController {
     return this.attendanceService.getYearlyStats(parseInt(year, 10));
   }
 
+  @Get('stats/weekly')
+  @ApiOperation({ summary: 'Get weekly attendance statistics for a year' })
+  @ApiQuery({ name: 'year', description: 'Year (YYYY)', required: true })
+  async getWeeklyStats(@Query('year') year: string) {
+    return this.attendanceService.getWeeklyStats(parseInt(year, 10));
+  }
+
   @Post('mark-absences')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Manually trigger absence marking' })
   async manualMarkAbsences() {
     this.logger.log('Manually triggering markAbsentees');
     return this.attendanceService.markAbsentees();
+  }
+
+  @Get('promotion/:promotionId')
+  @ApiOperation({ summary: 'Get promotion attendance stats between dates' })
+  @ApiParam({ name: 'promotionId', description: 'ID of the promotion' })
+  @ApiQuery({ name: 'startDate', description: 'Start date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', description: 'End date (YYYY-MM-DD)' })
+  async getPromotionAttendance(
+    @Param('promotionId') promotionId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.attendanceService.getPromotionAttendance(
+      promotionId,
+      new Date(startDate),
+      new Date(endDate)
+    );
   }
 }

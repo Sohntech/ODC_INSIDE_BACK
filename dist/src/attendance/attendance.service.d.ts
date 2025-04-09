@@ -290,5 +290,11 @@ export declare class AttendanceService {
         scanTime: Date | null;
         coachId: string;
     })[]>;
+    getPromotionAttendance(promotionId: string, startDate: Date, endDate: Date): Promise<{
+        date: string;
+        presentCount: number;
+        lateCount: number;
+        absentCount: number;
+    }[]>;
     markAbsentees(): Promise<void>;
 }

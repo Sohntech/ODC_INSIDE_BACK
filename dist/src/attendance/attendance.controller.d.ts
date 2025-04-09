@@ -134,4 +134,10 @@ export declare class AttendanceController {
         months: any[];
     }>;
     manualMarkAbsences(): Promise<void>;
+    getPromotionAttendance(promotionId: string, startDate: string, endDate: string): Promise<{
+        date: string;
+        presentCount: number;
+        lateCount: number;
+        absentCount: number;
+    }[]>;
 }
