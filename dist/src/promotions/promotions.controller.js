@@ -23,6 +23,7 @@ const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const client_1 = require("@prisma/client");
 const create_promotion_dto_1 = require("./dto/create-promotion.dto");
+const add_referentials_dto_1 = require("./dto/add-referentials.dto");
 let PromotionsController = PromotionsController_1 = class PromotionsController {
     constructor(promotionsService) {
         this.promotionsService = promotionsService;
@@ -55,6 +56,10 @@ let PromotionsController = PromotionsController_1 = class PromotionsController {
     async updateStatus(id, updateStatusDto) {
         this.logger.debug(`Updating status for promotion ${id} to ${updateStatusDto.status}`);
         return this.promotionsService.update(id, { status: updateStatusDto.status });
+    }
+    async addReferentials(id, dto) {
+        this.logger.debug(`Adding referentials to promotion ${id}: ${dto.referentialIds?.join(', ') || 'none'}`);
+        return this.promotionsService.addReferentials(id, dto.referentialIds);
     }
 };
 exports.PromotionsController = PromotionsController;
@@ -125,6 +130,19 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], PromotionsController.prototype, "updateStatus", null);
+__decorate([
+    (0, common_1.Post)(':id/referentials'),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Add referentials to a promotion' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Referentials added successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Promotion not found' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid input' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, add_referentials_dto_1.AddReferentialsDto]),
+    __metadata("design:returntype", Promise)
+], PromotionsController.prototype, "addReferentials", null);
 exports.PromotionsController = PromotionsController = PromotionsController_1 = __decorate([
     (0, swagger_1.ApiTags)('promotions'),
     (0, common_1.Controller)('promotions'),

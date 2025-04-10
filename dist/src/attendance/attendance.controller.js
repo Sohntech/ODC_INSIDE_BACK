@@ -68,6 +68,9 @@ let AttendanceController = AttendanceController_1 = class AttendanceController {
     async getYearlyStats(year) {
         return this.attendanceService.getYearlyStats(parseInt(year, 10));
     }
+    async getWeeklyStats(year) {
+        return this.attendanceService.getWeeklyStats(parseInt(year, 10));
+    }
     async manualMarkAbsences() {
         this.logger.log('Manually triggering markAbsentees');
         return this.attendanceService.markAbsentees();
@@ -144,6 +147,9 @@ __decorate([
 ], AttendanceController.prototype, "getLatestScans", null);
 __decorate([
     (0, common_1.Get)('stats/daily'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get daily attendance statistics' }),
+    (0, swagger_1.ApiQuery)({ name: 'date', description: 'Date (YYYY-MM-DD)', required: true }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Daily attendance statistics' }),
     __param(0, (0, common_1.Query)('date')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -151,6 +157,10 @@ __decorate([
 ], AttendanceController.prototype, "getDailyStats", null);
 __decorate([
     (0, common_1.Get)('stats/monthly'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get monthly attendance statistics' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', description: 'Year (YYYY)', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'month', description: 'Month (1-12)', required: true }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Monthly attendance statistics' }),
     __param(0, (0, common_1.Query)('year')),
     __param(1, (0, common_1.Query)('month')),
     __metadata("design:type", Function),
@@ -164,6 +174,15 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "getYearlyStats", null);
+__decorate([
+    (0, common_1.Get)('stats/weekly'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get weekly attendance statistics for a year' }),
+    (0, swagger_1.ApiQuery)({ name: 'year', description: 'Year (YYYY)', required: true }),
+    __param(0, (0, common_1.Query)('year')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendanceController.prototype, "getWeeklyStats", null);
 __decorate([
     (0, common_1.Post)('mark-absences'),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN),

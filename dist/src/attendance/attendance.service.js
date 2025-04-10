@@ -254,32 +254,54 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
         };
     }
     async getDailyStats(date) {
-        const targetDate = new Date(date);
-        const [learnerStats, coachStats] = await Promise.all([
-            this.prisma.learnerAttendance.groupBy({
-                by: ['isPresent', 'isLate'],
+        try {
+            const targetDate = new Date(date);
+            const attendanceRecords = await this.prisma.learnerAttendance.findMany({
                 where: {
                     date: targetDate,
                 },
-                _count: true,
-            }),
-            this.prisma.coachAttendance.groupBy({
-                by: ['isPresent', 'isLate'],
-                where: {
-                    date: targetDate,
-                },
-                _count: true,
-            }),
-        ]);
-        const present = learnerStats.find(s => s.isPresent && !s.isLate)?._count || 0;
-        const late = learnerStats.find(s => s.isPresent && s.isLate)?._count || 0;
-        const absent = learnerStats.find(s => !s.isPresent)?._count || 0;
-        return {
-            present,
-            late,
-            absent,
-            total: present + late + absent,
-        };
+                include: {
+                    learner: {
+                        include: {
+                            referential: true
+                        }
+                    }
+                }
+            });
+            const present = attendanceRecords.filter(r => r.isPresent && !r.isLate).length;
+            const late = attendanceRecords.filter(r => r.isPresent && r.isLate).length;
+            const absent = attendanceRecords.filter(r => !r.isPresent).length;
+            return {
+                present,
+                late,
+                absent,
+                total: present + late + absent,
+                attendance: attendanceRecords.map(record => ({
+                    id: record.id,
+                    date: record.date.toISOString(),
+                    scanTime: record.scanTime?.toISOString() || null,
+                    isPresent: record.isPresent,
+                    isLate: record.isLate,
+                    status: record.status || 'PENDING',
+                    learner: {
+                        id: record.learner.id,
+                        firstName: record.learner.firstName,
+                        lastName: record.learner.lastName,
+                        matricule: record.learner.matricule,
+                        photoUrl: record.learner.photoUrl,
+                        address: record.learner.address,
+                        referential: record.learner.referential ? {
+                            id: record.learner.referential.id,
+                            name: record.learner.referential.name
+                        } : undefined
+                    }
+                }))
+            };
+        }
+        catch (error) {
+            this.logger.error('Error getting daily stats:', error);
+            throw error;
+        }
     }
     async getMonthlyStats(year, month) {
         const startDate = new Date(year, month - 1, 1);
@@ -331,6 +353,50 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             });
         }
         return { months };
+    }
+    async getWeeklyStats(year) {
+        try {
+            const startDate = new Date(year, 0, 1);
+            const endDate = new Date(year, 11, 31);
+            const attendanceRecords = await this.prisma.learnerAttendance.findMany({
+                where: {
+                    date: {
+                        gte: startDate,
+                        lte: endDate,
+                    },
+                },
+            });
+            const weeks = Array.from({ length: 52 }, (_, i) => ({
+                weekNumber: i + 1,
+                present: 0,
+                late: 0,
+                absent: 0,
+            }));
+            attendanceRecords.forEach(record => {
+                const weekNumber = this.getWeekNumber(record.date) - 1;
+                if (weekNumber >= 0 && weekNumber < 52) {
+                    if (record.isPresent && !record.isLate) {
+                        weeks[weekNumber].present++;
+                    }
+                    else if (record.isPresent && record.isLate) {
+                        weeks[weekNumber].late++;
+                    }
+                    else {
+                        weeks[weekNumber].absent++;
+                    }
+                }
+            });
+            return { weeks };
+        }
+        catch (error) {
+            this.logger.error('Error getting weekly stats:', error);
+            throw error;
+        }
+    }
+    getWeekNumber(date) {
+        const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+        const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
+        return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
     }
     async getScanHistory(type, startDate, endDate) {
         if (type === 'LEARNER') {

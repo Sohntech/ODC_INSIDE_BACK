@@ -299,35 +299,58 @@ export class AttendanceService {
   }
 
   async getDailyStats(date: string) {
-    const targetDate = new Date(date);
-    
-    const [learnerStats, coachStats] = await Promise.all([
-      this.prisma.learnerAttendance.groupBy({
-        by: ['isPresent', 'isLate'],
+    try {
+      const targetDate = new Date(date);
+      
+      // Get all attendance records for the day with learner details
+      const attendanceRecords = await this.prisma.learnerAttendance.findMany({
         where: {
           date: targetDate,
         },
-        _count: true,
-      }),
-      this.prisma.coachAttendance.groupBy({
-        by: ['isPresent', 'isLate'],
-        where: {
-          date: targetDate,
-        },
-        _count: true,
-      }),
-    ]);
+        include: {
+          learner: {
+            include: {
+              referential: true
+            }
+          }
+        }
+      });
 
-    const present = learnerStats.find(s => s.isPresent && !s.isLate)?._count || 0;
-    const late = learnerStats.find(s => s.isPresent && s.isLate)?._count || 0;
-    const absent = learnerStats.find(s => !s.isPresent)?._count || 0;
+      // Calculate stats
+      const present = attendanceRecords.filter(r => r.isPresent && !r.isLate).length;
+      const late = attendanceRecords.filter(r => r.isPresent && r.isLate).length;
+      const absent = attendanceRecords.filter(r => !r.isPresent).length;
 
-    return {
-      present,
-      late,
-      absent,
-      total: present + late + absent,
-    };
+      return {
+        present,
+        late,
+        absent,
+        total: present + late + absent,
+        attendance: attendanceRecords.map(record => ({
+          id: record.id,
+          date: record.date.toISOString(),
+          scanTime: record.scanTime?.toISOString() || null,
+          isPresent: record.isPresent,
+          isLate: record.isLate,
+          status: record.status || 'PENDING',
+          learner: {
+            id: record.learner.id,
+            firstName: record.learner.firstName,
+            lastName: record.learner.lastName,
+            matricule: record.learner.matricule,
+            photoUrl: record.learner.photoUrl,
+            address: record.learner.address,
+            referential: record.learner.referential ? {
+              id: record.learner.referential.id,
+              name: record.learner.referential.name
+            } : undefined
+          }
+        }))
+      };
+    } catch (error) {
+      this.logger.error('Error getting daily stats:', error);
+      throw error;
+    }
   }
 
   async getMonthlyStats(year: number, month: number) {

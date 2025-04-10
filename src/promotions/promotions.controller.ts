@@ -24,6 +24,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Promotion, PromotionStatus, UserRole } from '@prisma/client';
 import { memoryStorage } from 'multer';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
+import { AddReferentialsDto } from './dto/add-referentials.dto';
 
 @ApiTags('promotions')
 @Controller('promotions')
@@ -101,5 +102,19 @@ export class PromotionsController {
   ): Promise<Promotion> {
     this.logger.debug(`Updating status for promotion ${id} to ${updateStatusDto.status}`);
     return this.promotionsService.update(id, { status: updateStatusDto.status });
+  }
+
+  @Post(':id/referentials')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Add referentials to a promotion' })
+  @ApiResponse({ status: 200, description: 'Referentials added successfully' })
+  @ApiResponse({ status: 404, description: 'Promotion not found' })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  async addReferentials(
+    @Param('id') id: string,
+    @Body() dto: AddReferentialsDto
+  ): Promise<Promotion> {
+    this.logger.debug(`Adding referentials to promotion ${id}: ${dto.referentialIds?.join(', ') || 'none'}`);
+    return this.promotionsService.addReferentials(id, dto.referentialIds);
   }
 }

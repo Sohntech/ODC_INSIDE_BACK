@@ -293,6 +293,9 @@ export class PromotionsService {
   async addReferentials(promotionId: string, referentialIds: string[]) {
     const promotion = await this.prisma.promotion.findUnique({
       where: { id: promotionId },
+      include: {
+        referentials: true
+      }
     });
 
     if (!promotion) {
@@ -301,49 +304,51 @@ export class PromotionsService {
 
     return this.prisma.$transaction(async (prisma) => {
       // Connect referentials to promotion
-      await prisma.promotion.update({
+      const updatedPromotion = await prisma.promotion.update({
         where: { id: promotionId },
         data: {
           referentials: {
             connect: referentialIds.map(id => ({ id })),
           },
         },
+        include: {
+          referentials: true,
+          learners: true,
+        },
       });
 
       // Update session dates for each referential
-      const referentials = await prisma.referential.findMany({
-        where: { id: { in: referentialIds } },
-        include: { sessions: true },
-      });
+      for (const refId of referentialIds) {
+        const referential = await prisma.referential.findUnique({
+          where: { id: refId },
+          include: { sessions: true },
+        });
 
-      for (const referential of referentials) {
-        if (referential.numberOfSessions > 1 && referential.sessions?.length === 2) {
+        if (referential?.numberOfSessions > 1 && referential.sessions?.length === 2) {
           const sessionLength = referential.sessionLength || 4;
-          const promotionStartDate = promotion.startDate;
-          const promotionEndDate = promotion.endDate;
-
-          const session1EndDate = new Date(promotionStartDate);
+          const session1EndDate = new Date(promotion.startDate);
           session1EndDate.setMonth(session1EndDate.getMonth() + sessionLength);
 
-          await prisma.session.update({
-            where: { id: referential.sessions[0].id },
-            data: {
-              startDate: promotionStartDate,
-              endDate: session1EndDate,
-            },
-          });
-
-          await prisma.session.update({
-            where: { id: referential.sessions[1].id },
-            data: {
-              startDate: session1EndDate,
-              endDate: promotionEndDate,
-            },
-          });
+          await this.prisma.$transaction([
+            prisma.session.update({
+              where: { id: referential.sessions[0].id },
+              data: {
+                startDate: promotion.startDate,
+                endDate: session1EndDate,
+              },
+            }),
+            prisma.session.update({
+              where: { id: referential.sessions[1].id },
+              data: {
+                startDate: session1EndDate,
+                endDate: promotion.endDate,
+              },
+            }),
+          ]);
         }
       }
 
-      return this.findOne(promotionId);
+      return updatedPromotion;
     });
   }
 }

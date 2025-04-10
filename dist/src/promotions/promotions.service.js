@@ -252,47 +252,54 @@ let PromotionsService = PromotionsService_1 = class PromotionsService {
     async addReferentials(promotionId, referentialIds) {
         const promotion = await this.prisma.promotion.findUnique({
             where: { id: promotionId },
+            include: {
+                referentials: true
+            }
         });
         if (!promotion) {
             throw new common_1.NotFoundException('Promotion not found');
         }
         return this.prisma.$transaction(async (prisma) => {
-            await prisma.promotion.update({
+            const updatedPromotion = await prisma.promotion.update({
                 where: { id: promotionId },
                 data: {
                     referentials: {
                         connect: referentialIds.map(id => ({ id })),
                     },
                 },
+                include: {
+                    referentials: true,
+                    learners: true,
+                },
             });
-            const referentials = await prisma.referential.findMany({
-                where: { id: { in: referentialIds } },
-                include: { sessions: true },
-            });
-            for (const referential of referentials) {
-                if (referential.numberOfSessions > 1 && referential.sessions?.length === 2) {
+            for (const refId of referentialIds) {
+                const referential = await prisma.referential.findUnique({
+                    where: { id: refId },
+                    include: { sessions: true },
+                });
+                if (referential?.numberOfSessions > 1 && referential.sessions?.length === 2) {
                     const sessionLength = referential.sessionLength || 4;
-                    const promotionStartDate = promotion.startDate;
-                    const promotionEndDate = promotion.endDate;
-                    const session1EndDate = new Date(promotionStartDate);
+                    const session1EndDate = new Date(promotion.startDate);
                     session1EndDate.setMonth(session1EndDate.getMonth() + sessionLength);
-                    await prisma.session.update({
-                        where: { id: referential.sessions[0].id },
-                        data: {
-                            startDate: promotionStartDate,
-                            endDate: session1EndDate,
-                        },
-                    });
-                    await prisma.session.update({
-                        where: { id: referential.sessions[1].id },
-                        data: {
-                            startDate: session1EndDate,
-                            endDate: promotionEndDate,
-                        },
-                    });
+                    await this.prisma.$transaction([
+                        prisma.session.update({
+                            where: { id: referential.sessions[0].id },
+                            data: {
+                                startDate: promotion.startDate,
+                                endDate: session1EndDate,
+                            },
+                        }),
+                        prisma.session.update({
+                            where: { id: referential.sessions[1].id },
+                            data: {
+                                startDate: session1EndDate,
+                                endDate: promotion.endDate,
+                            },
+                        }),
+                    ]);
                 }
             }
-            return this.findOne(promotionId);
+            return updatedPromotion;
         });
     }
 };

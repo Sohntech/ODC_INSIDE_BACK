@@ -191,6 +191,26 @@ export declare class AttendanceService {
         late: number;
         absent: number;
         total: number;
+        attendance: {
+            id: string;
+            date: string;
+            scanTime: string;
+            isPresent: boolean;
+            isLate: boolean;
+            status: import(".prisma/client").$Enums.AbsenceStatus;
+            learner: {
+                id: string;
+                firstName: string;
+                lastName: string;
+                matricule: string;
+                photoUrl: string;
+                address: string;
+                referential: {
+                    id: string;
+                    name: string;
+                };
+            };
+        }[];
     }>;
     getMonthlyStats(year: number, month: number): Promise<{
         days: any[];
@@ -198,6 +218,15 @@ export declare class AttendanceService {
     getYearlyStats(year: number): Promise<{
         months: any[];
     }>;
+    getWeeklyStats(year: number): Promise<{
+        weeks: {
+            weekNumber: number;
+            present: number;
+            late: number;
+            absent: number;
+        }[];
+    }>;
+    private getWeekNumber;
     getScanHistory(type: 'LEARNER' | 'COACH', startDate: Date, endDate: Date): Promise<({
         learner: {
             promotion: {

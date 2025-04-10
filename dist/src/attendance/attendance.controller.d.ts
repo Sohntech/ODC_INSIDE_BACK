@@ -2,6 +2,8 @@ import { AttendanceService } from './attendance.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { UpdateAbsenceStatusDto } from './dto/update-absence-status.dto';
 import { CoachScanResponse, LearnerScanResponse } from './interfaces/scan-response.interface';
+import { MonthlyStats } from './interfaces/attendance-stats.interface';
+import { DailyStats } from './interfaces/attendance-stats.interface';
 export declare class AttendanceController {
     private readonly attendanceService;
     private readonly cloudinaryService;
@@ -121,17 +123,18 @@ export declare class AttendanceController {
             };
         }[];
     }>;
-    getDailyStats(date: string): Promise<{
-        present: number;
-        late: number;
-        absent: number;
-        total: number;
-    }>;
-    getMonthlyStats(year: string, month: string): Promise<{
-        days: any[];
-    }>;
+    getDailyStats(date: string): Promise<DailyStats>;
+    getMonthlyStats(year: string, month: string): Promise<MonthlyStats>;
     getYearlyStats(year: string): Promise<{
         months: any[];
+    }>;
+    getWeeklyStats(year: string): Promise<{
+        weeks: {
+            weekNumber: number;
+            present: number;
+            late: number;
+            absent: number;
+        }[];
     }>;
     manualMarkAbsences(): Promise<void>;
     getPromotionAttendance(promotionId: string, startDate: string, endDate: string): Promise<{

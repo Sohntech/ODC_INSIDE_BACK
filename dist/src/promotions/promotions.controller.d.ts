@@ -1,6 +1,7 @@
 import { PromotionsService } from './promotions.service';
 import { Promotion, PromotionStatus } from '@prisma/client';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
+import { AddReferentialsDto } from './dto/add-referentials.dto';
 export declare class PromotionsController {
     private readonly promotionsService;
     private readonly logger;
@@ -64,4 +65,5 @@ export declare class PromotionsController {
     updateStatus(id: string, updateStatusDto: {
         status: PromotionStatus;
     }): Promise<Promotion>;
+    addReferentials(id: string, dto: AddReferentialsDto): Promise<Promotion>;
 }
