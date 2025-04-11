@@ -5,12 +5,12 @@ export declare class ModulesController {
     constructor(modulesService: ModulesService);
     create(createModuleDto: CreateModuleDto, photoFile?: Express.Multer.File): Promise<{
         id: string;
-        photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
-        sessionId: string | null;
         name: string;
+        photoUrl: string | null;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -18,12 +18,12 @@ export declare class ModulesController {
     }>;
     findAll(): Promise<{
         id: string;
-        photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
-        sessionId: string | null;
         name: string;
+        photoUrl: string | null;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -31,12 +31,12 @@ export declare class ModulesController {
     }[]>;
     getActiveModules(): Promise<{
         id: string;
-        photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
-        sessionId: string | null;
         name: string;
+        photoUrl: string | null;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -44,12 +44,12 @@ export declare class ModulesController {
     }[]>;
     getModulesByReferential(refId: string): Promise<{
         id: string;
-        photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
-        sessionId: string | null;
         name: string;
+        photoUrl: string | null;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -57,25 +57,42 @@ export declare class ModulesController {
     }[]>;
     findOne(id: string): Promise<{
         id: string;
-        photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
-        sessionId: string | null;
         name: string;
+        photoUrl: string | null;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
         coachId: string;
     }>;
+    getGradesByModule(id: string): Promise<{
+        id: string;
+        value: number;
+        comment: string;
+        createdAt: Date;
+        learner: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            matricule: string;
+            photoUrl: string;
+            referential: {
+                id: string;
+                name: string;
+            };
+        };
+    }[]>;
     update(id: string, data: any): Promise<{
         id: string;
-        photoUrl: string | null;
-        refId: string;
         createdAt: Date;
         updatedAt: Date;
-        sessionId: string | null;
         name: string;
+        photoUrl: string | null;
+        refId: string;
+        sessionId: string | null;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -88,6 +105,8 @@ export declare class ModulesController {
     }): Promise<{
         learner: {
             id: string;
+            createdAt: Date;
+            updatedAt: Date;
             matricule: string;
             firstName: string;
             lastName: string;
@@ -102,18 +121,16 @@ export declare class ModulesController {
             userId: string;
             refId: string | null;
             promotionId: string;
-            createdAt: Date;
-            updatedAt: Date;
             sessionId: string | null;
         };
         module: {
             id: string;
-            photoUrl: string | null;
-            refId: string;
             createdAt: Date;
             updatedAt: Date;
-            sessionId: string | null;
             name: string;
+            photoUrl: string | null;
+            refId: string;
+            sessionId: string | null;
             description: string | null;
             startDate: Date;
             endDate: Date;
@@ -121,12 +138,12 @@ export declare class ModulesController {
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;
+        learnerId: string;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     updateGrade(gradeId: string, data: {
         value: number;
@@ -134,6 +151,8 @@ export declare class ModulesController {
     }): Promise<{
         learner: {
             id: string;
+            createdAt: Date;
+            updatedAt: Date;
             matricule: string;
             firstName: string;
             lastName: string;
@@ -148,18 +167,16 @@ export declare class ModulesController {
             userId: string;
             refId: string | null;
             promotionId: string;
-            createdAt: Date;
-            updatedAt: Date;
             sessionId: string | null;
         };
         module: {
             id: string;
-            photoUrl: string | null;
-            refId: string;
             createdAt: Date;
             updatedAt: Date;
-            sessionId: string | null;
             name: string;
+            photoUrl: string | null;
+            refId: string;
+            sessionId: string | null;
             description: string | null;
             startDate: Date;
             endDate: Date;
@@ -167,11 +184,11 @@ export declare class ModulesController {
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;
+        learnerId: string;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
 }

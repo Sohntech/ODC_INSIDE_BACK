@@ -42,6 +42,9 @@ let ModulesController = class ModulesController {
     async findOne(id) {
         return this.modulesService.findOne(id);
     }
+    async getGradesByModule(id) {
+        return this.modulesService.getGradesByModule(id);
+    }
     async update(id, data) {
         return this.modulesService.update(id, data);
     }
@@ -114,6 +117,16 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], ModulesController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Get)(':id/grades'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all grades for a specific module' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of grades retrieved successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Module not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ModulesController.prototype, "getGradesByModule", null);
 __decorate([
     (0, common_1.Put)(':id'),
     (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.COACH),

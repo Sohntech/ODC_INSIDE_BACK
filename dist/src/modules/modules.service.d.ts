@@ -19,6 +19,8 @@ export declare class ModulesService {
     }): Promise<{
         learner: {
             id: string;
+            createdAt: Date;
+            updatedAt: Date;
             matricule: string;
             firstName: string;
             lastName: string;
@@ -33,18 +35,16 @@ export declare class ModulesService {
             userId: string;
             refId: string | null;
             promotionId: string;
-            createdAt: Date;
-            updatedAt: Date;
             sessionId: string | null;
         };
         module: {
             id: string;
-            photoUrl: string | null;
-            refId: string;
             createdAt: Date;
             updatedAt: Date;
-            sessionId: string | null;
             name: string;
+            photoUrl: string | null;
+            refId: string;
+            sessionId: string | null;
             description: string | null;
             startDate: Date;
             endDate: Date;
@@ -52,12 +52,12 @@ export declare class ModulesService {
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;
+        learnerId: string;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     updateGrade(gradeId: string, data: {
         value: number;
@@ -65,6 +65,8 @@ export declare class ModulesService {
     }): Promise<{
         learner: {
             id: string;
+            createdAt: Date;
+            updatedAt: Date;
             matricule: string;
             firstName: string;
             lastName: string;
@@ -79,18 +81,16 @@ export declare class ModulesService {
             userId: string;
             refId: string | null;
             promotionId: string;
-            createdAt: Date;
-            updatedAt: Date;
             sessionId: string | null;
         };
         module: {
             id: string;
-            photoUrl: string | null;
-            refId: string;
             createdAt: Date;
             updatedAt: Date;
-            sessionId: string | null;
             name: string;
+            photoUrl: string | null;
+            refId: string;
+            sessionId: string | null;
             description: string | null;
             startDate: Date;
             endDate: Date;
@@ -98,13 +98,30 @@ export declare class ModulesService {
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;
+        learnerId: string;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     getActiveModules(): Promise<Module[]>;
     getModulesByReferential(refId: string): Promise<Module[]>;
+    getGradesByModule(moduleId: string): Promise<{
+        id: string;
+        value: number;
+        comment: string;
+        createdAt: Date;
+        learner: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            matricule: string;
+            photoUrl: string;
+            referential: {
+                id: string;
+                name: string;
+            };
+        };
+    }[]>;
 }

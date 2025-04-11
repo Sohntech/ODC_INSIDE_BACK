@@ -146,6 +146,44 @@ let ModulesService = ModulesService_1 = class ModulesService {
             },
         });
     }
+    async getGradesByModule(moduleId) {
+        const module = await this.prisma.module.findUnique({
+            where: { id: moduleId },
+            include: {
+                grades: {
+                    include: {
+                        learner: {
+                            include: {
+                                referential: {
+                                    select: {
+                                        id: true,
+                                        name: true
+                                    }
+                                }
+                            },
+                        }
+                    }
+                }
+            }
+        });
+        if (!module) {
+            throw new common_1.NotFoundException(`Module with ID ${moduleId} not found`);
+        }
+        return module.grades.map(grade => ({
+            id: grade.id,
+            value: grade.value,
+            comment: grade.comment,
+            createdAt: grade.createdAt,
+            learner: {
+                id: grade.learner.id,
+                firstName: grade.learner.firstName,
+                lastName: grade.learner.lastName,
+                matricule: grade.learner.matricule,
+                photoUrl: grade.learner.photoUrl,
+                referential: grade.learner.referential
+            }
+        }));
+    }
 };
 exports.ModulesService = ModulesService;
 exports.ModulesService = ModulesService = ModulesService_1 = __decorate([

@@ -160,4 +160,45 @@ export class ModulesService {
       },
     });
   }
+
+  async getGradesByModule(moduleId: string) {
+    const module = await this.prisma.module.findUnique({
+      where: { id: moduleId },
+      include: {
+        grades: {
+          include: {
+            learner: {
+              include: {
+                referential: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              },
+            }
+          }
+        }
+      }
+    });
+
+    if (!module) {
+      throw new NotFoundException(`Module with ID ${moduleId} not found`);
+    }
+
+    return module.grades.map(grade => ({
+      id: grade.id,
+      value: grade.value,
+      comment: grade.comment,
+      createdAt: grade.createdAt,
+      learner: {
+        id: grade.learner.id,
+        firstName: grade.learner.firstName,
+        lastName: grade.learner.lastName,
+        matricule: grade.learner.matricule,
+        photoUrl: grade.learner.photoUrl,
+        referential: grade.learner.referential
+      }
+    }));
+  }
 }

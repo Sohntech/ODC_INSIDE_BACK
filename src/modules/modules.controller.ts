@@ -79,6 +79,14 @@ export class ModulesController {
     return this.modulesService.findOne(id);
   }
 
+  @Get(':id/grades')
+  @ApiOperation({ summary: 'Get all grades for a specific module' })
+  @ApiResponse({ status: 200, description: 'List of grades retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Module not found' })
+  async getGradesByModule(@Param('id') id: string) {
+    return this.modulesService.getGradesByModule(id);
+  }
+
   @Put(':id')
   @Roles(UserRole.ADMIN, UserRole.COACH)
   @ApiOperation({ summary: 'Mettre à jour un module' })
