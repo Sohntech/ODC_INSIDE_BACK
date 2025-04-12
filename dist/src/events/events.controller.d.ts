@@ -8,10 +8,10 @@ export declare class EventsController {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        title: string;
         description: string;
         startDate: Date;
         endDate: Date;
+        title: string;
         location: string | null;
     }>;
     findAll(): Promise<{
@@ -20,10 +20,10 @@ export declare class EventsController {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        title: string;
         description: string;
         startDate: Date;
         endDate: Date;
+        title: string;
         location: string | null;
     }[]>;
     getUpcomingEvents(): Promise<{
@@ -32,10 +32,10 @@ export declare class EventsController {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        title: string;
         description: string;
         startDate: Date;
         endDate: Date;
+        title: string;
         location: string | null;
     }[]>;
     getEventsByPromotion(promotionId: string): Promise<{
@@ -44,10 +44,10 @@ export declare class EventsController {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        title: string;
         description: string;
         startDate: Date;
         endDate: Date;
+        title: string;
         location: string | null;
     }[]>;
     findOne(id: string): Promise<{
@@ -56,10 +56,10 @@ export declare class EventsController {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        title: string;
         description: string;
         startDate: Date;
         endDate: Date;
+        title: string;
         location: string | null;
     }>;
     update(id: string, data: any): Promise<{
@@ -68,10 +68,10 @@ export declare class EventsController {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        title: string;
         description: string;
         startDate: Date;
         endDate: Date;
+        title: string;
         location: string | null;
     }>;
 }

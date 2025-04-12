@@ -3,12 +3,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Cron } from '@nestjs/schedule';
 import { AbsenceStatus, LearnerAttendance } from '@prisma/client';
 import { LearnerScanResponse, CoachScanResponse } from './interfaces/scan-response.interface';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AttendanceService {
   private readonly logger = new Logger(AttendanceService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService
+  ) {}
 
   async findLearnerByMatricule(matricule: string) {
     const learner = await this.prisma.learner.findUnique({
@@ -107,7 +111,7 @@ export class AttendanceService {
     }
 
     const isLate = !this.isWithinScanTime(now);
-    const attendance = await this.prisma.learnerAttendance.create({
+    let attendance = await this.prisma.learnerAttendance.create({
       data: {
         date: today,
         isPresent: true,
@@ -116,6 +120,20 @@ export class AttendanceService {
         learnerId: learner.id,
       },
     });
+
+    if (isLate) {
+      attendance = await this.prisma.learnerAttendance.create({
+        data: {
+          learnerId: learner.id,
+          date: today,
+          isPresent: true,
+          isLate: true,
+          scanTime: now,
+          status: 'TO_JUSTIFY', // Nouvel état initial pour les retards
+        },
+        include: { learner: true }
+      });
+    }
 
     return {
       type: 'LEARNER',
@@ -186,17 +204,26 @@ export class AttendanceService {
     justification: string,
     documentUrl?: string,
   ) {
-    return this.prisma.learnerAttendance.update({
+    const attendance = await this.prisma.learnerAttendance.update({
       where: { id: attendanceId },
       data: {
         justification,
         documentUrl,
-        status: AbsenceStatus.PENDING,
+        status: 'PENDING'
       },
       include: {
-        learner: true,
-      },
+        learner: true
+      }
     });
+
+    // Create notification
+    await this.notificationsService.createJustificationNotification(
+      attendanceId,
+      attendance.learnerId,
+      `${attendance.learner.firstName} ${attendance.learner.lastName} a soumis une justification ${attendance.isLate ? 'de retard' : 'd\'absence'}`
+    );
+
+    return attendance;
   }
 
   async updateAbsenceStatus(
@@ -640,6 +667,7 @@ export class AttendanceService {
                 isPresent: false,
                 isLate: false,
                 learnerId: learner.id,
+                status: 'TO_JUSTIFY', // Nouvel état initial
               }
             });
           } else {

@@ -24,6 +24,7 @@ const cloudinary_module_1 = require("./cloudinary/cloudinary.module");
 const meals_module_1 = require("./meals/meals.module");
 const vigils_module_1 = require("./vigils/vigils.module");
 const restaurateurs_module_1 = require("./restaurateurs/restaurateurs.module");
+const notifications_module_1 = require("./notifications/notifications.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -48,6 +49,7 @@ exports.AppModule = AppModule = __decorate([
             events_module_1.EventsModule,
             cloudinary_module_1.CloudinaryModule,
             meals_module_1.MealsModule,
+            notifications_module_1.NotificationsModule,
         ],
     })
 ], AppModule);

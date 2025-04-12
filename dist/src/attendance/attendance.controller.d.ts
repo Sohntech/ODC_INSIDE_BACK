@@ -19,8 +19,6 @@ export declare class AttendanceController {
     submitJustification(id: string, justification: string, document?: Express.Multer.File): Promise<{
         learner: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             matricule: string;
             firstName: string;
             lastName: string;
@@ -35,15 +33,17 @@ export declare class AttendanceController {
             userId: string;
             refId: string | null;
             promotionId: string;
+            createdAt: Date;
+            updatedAt: Date;
             sessionId: string | null;
         };
     } & {
         id: string;
-        learnerId: string;
+        status: import(".prisma/client").$Enums.AbsenceStatus;
         createdAt: Date;
         updatedAt: Date;
         date: Date;
-        status: import(".prisma/client").$Enums.AbsenceStatus;
+        learnerId: string;
         isPresent: boolean;
         isLate: boolean;
         scanTime: Date | null;
@@ -53,11 +53,11 @@ export declare class AttendanceController {
     }>;
     updateAbsenceStatus(id: string, updateDto: UpdateAbsenceStatusDto): Promise<{
         id: string;
-        learnerId: string;
+        status: import(".prisma/client").$Enums.AbsenceStatus;
         createdAt: Date;
         updatedAt: Date;
         date: Date;
-        status: import(".prisma/client").$Enums.AbsenceStatus;
+        learnerId: string;
         isPresent: boolean;
         isLate: boolean;
         scanTime: Date | null;
@@ -78,10 +78,10 @@ export declare class AttendanceController {
                 photoUrl: string;
                 referential: {
                     id: string;
-                    name: string;
+                    photoUrl: string | null;
                     createdAt: Date;
                     updatedAt: Date;
-                    photoUrl: string | null;
+                    name: string;
                     description: string | null;
                     capacity: number;
                     numberOfSessions: number;
@@ -89,11 +89,11 @@ export declare class AttendanceController {
                 };
                 promotion: {
                     id: string;
-                    name: string;
-                    createdAt: Date;
-                    updatedAt: Date;
                     photoUrl: string | null;
                     status: import(".prisma/client").$Enums.PromotionStatus;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    name: string;
                     startDate: Date;
                     endDate: Date;
                 };
@@ -111,10 +111,10 @@ export declare class AttendanceController {
                 photoUrl: string;
                 referential: {
                     id: string;
-                    name: string;
+                    photoUrl: string | null;
                     createdAt: Date;
                     updatedAt: Date;
-                    photoUrl: string | null;
+                    name: string;
                     description: string | null;
                     capacity: number;
                     numberOfSessions: number;

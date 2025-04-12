@@ -17,12 +17,19 @@ class UpdateAbsenceStatusDto {
 }
 exports.UpdateAbsenceStatusDto = UpdateAbsenceStatusDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ enum: client_1.AbsenceStatus }),
+    (0, swagger_1.ApiProperty)({
+        enum: client_1.AbsenceStatus,
+        description: 'Status of the absence justification',
+        example: 'PENDING'
+    }),
     (0, class_validator_1.IsEnum)(client_1.AbsenceStatus),
     __metadata("design:type", String)
 ], UpdateAbsenceStatusDto.prototype, "status", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ required: false }),
+    (0, swagger_1.ApiProperty)({
+        required: false,
+        description: 'Optional comment for the status update'
+    }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)

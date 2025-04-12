@@ -12,6 +12,8 @@ const attendance_service_1 = require("./attendance.service");
 const attendance_controller_1 = require("./attendance.controller");
 const cloudinary_module_1 = require("../cloudinary/cloudinary.module");
 const schedule_1 = require("@nestjs/schedule");
+const prisma_module_1 = require("../prisma/prisma.module");
+const notifications_module_1 = require("../notifications/notifications.module");
 let AttendanceModule = class AttendanceModule {
 };
 exports.AttendanceModule = AttendanceModule;
@@ -19,7 +21,9 @@ exports.AttendanceModule = AttendanceModule = __decorate([
     (0, common_1.Module)({
         imports: [
             schedule_1.ScheduleModule.forRoot(),
-            cloudinary_module_1.CloudinaryModule
+            cloudinary_module_1.CloudinaryModule,
+            prisma_module_1.PrismaModule,
+            notifications_module_1.NotificationsModule
         ],
         providers: [attendance_service_1.AttendanceService],
         controllers: [attendance_controller_1.AttendanceController],

@@ -3,6 +3,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 
 @Injectable()
 export class PrismaService extends PrismaClient<Prisma.PrismaClientOptions, 'beforeExit'> implements OnModuleInit, OnModuleDestroy {
+  [x: string]: any;
   private readonly logger = new Logger(PrismaService.name);
   private readonly maxRetries = 3;
   private readonly retryDelay = 1000; // 1 second

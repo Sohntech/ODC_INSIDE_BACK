@@ -7,44 +7,44 @@ export declare class PromotionsController {
     private readonly logger;
     constructor(promotionsService: PromotionsService);
     create(createPromotionDto: CreatePromotionDto, photo?: Express.Multer.File): Promise<{
-        name: string;
         id: string;
-        startDate: Date;
-        endDate: Date;
         photoUrl: string | null;
         status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        startDate: Date;
+        endDate: Date;
     }>;
     findAll(): Promise<{
-        name: string;
         id: string;
-        startDate: Date;
-        endDate: Date;
         photoUrl: string | null;
         status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        startDate: Date;
+        endDate: Date;
     }[]>;
     getActivePromotion(): Promise<{
-        name: string;
         id: string;
-        startDate: Date;
-        endDate: Date;
         photoUrl: string | null;
         status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        startDate: Date;
+        endDate: Date;
     }>;
     findOne(id: string): Promise<{
-        name: string;
         id: string;
-        startDate: Date;
-        endDate: Date;
         photoUrl: string | null;
         status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        startDate: Date;
+        endDate: Date;
     }>;
     getStatistics(id: string): Promise<{
         totalLearners: number;
@@ -53,14 +53,14 @@ export declare class PromotionsController {
         upcomingEvents: number;
     }>;
     update(id: string, data: any): Promise<{
-        name: string;
         id: string;
-        startDate: Date;
-        endDate: Date;
         photoUrl: string | null;
         status: import(".prisma/client").$Enums.PromotionStatus;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        startDate: Date;
+        endDate: Date;
     }>;
     updateStatus(id: string, updateStatusDto: {
         status: PromotionStatus;

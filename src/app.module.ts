@@ -15,6 +15,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { MealsModule } from './meals/meals.module';
 import { VigilsModule } from './vigils/vigils.module';
 import { RestaurateursModule } from './restaurateurs/restaurateurs.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { RestaurateursModule } from './restaurateurs/restaurateurs.module';
     EventsModule,
     CloudinaryModule,
     MealsModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

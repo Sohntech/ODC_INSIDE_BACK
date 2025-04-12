@@ -15,9 +15,11 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const schedule_1 = require("@nestjs/schedule");
 const client_1 = require("@prisma/client");
+const notifications_service_1 = require("../notifications/notifications.service");
 let AttendanceService = AttendanceService_1 = class AttendanceService {
-    constructor(prisma) {
+    constructor(prisma, notificationsService) {
         this.prisma = prisma;
+        this.notificationsService = notificationsService;
         this.logger = new common_1.Logger(AttendanceService_1.name);
     }
     async findLearnerByMatricule(matricule) {
@@ -89,7 +91,7 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             throw new common_1.ConflictException(`${learner.firstName} ${learner.lastName} a déjà été scanné aujourd'hui à ${existingAttendance.scanTime.toLocaleTimeString()}`);
         }
         const isLate = !this.isWithinScanTime(now);
-        const attendance = await this.prisma.learnerAttendance.create({
+        let attendance = await this.prisma.learnerAttendance.create({
             data: {
                 date: today,
                 isPresent: true,
@@ -98,6 +100,19 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
                 learnerId: learner.id,
             },
         });
+        if (isLate) {
+            attendance = await this.prisma.learnerAttendance.create({
+                data: {
+                    learnerId: learner.id,
+                    date: today,
+                    isPresent: true,
+                    isLate: true,
+                    scanTime: now,
+                    status: 'TO_JUSTIFY',
+                },
+                include: { learner: true }
+            });
+        }
         return {
             type: 'LEARNER',
             scanTime: attendance.scanTime,
@@ -153,17 +168,19 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
         };
     }
     async submitAbsenceJustification(attendanceId, justification, documentUrl) {
-        return this.prisma.learnerAttendance.update({
+        const attendance = await this.prisma.learnerAttendance.update({
             where: { id: attendanceId },
             data: {
                 justification,
                 documentUrl,
-                status: client_1.AbsenceStatus.PENDING,
+                status: 'PENDING'
             },
             include: {
-                learner: true,
-            },
+                learner: true
+            }
         });
+        await this.notificationsService.createJustificationNotification(attendanceId, attendance.learnerId, `${attendance.learner.firstName} ${attendance.learner.lastName} a soumis une justification ${attendance.isLate ? 'de retard' : 'd\'absence'}`);
+        return attendance;
     }
     async updateAbsenceStatus(attendanceId, status, comment) {
         const attendance = await this.prisma.learnerAttendance.findUnique({
@@ -534,6 +551,7 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
                                 isPresent: false,
                                 isLate: false,
                                 learnerId: learner.id,
+                                status: 'TO_JUSTIFY',
                             }
                         });
                     }
@@ -613,6 +631,7 @@ __decorate([
 ], AttendanceService.prototype, "markAbsentees", null);
 exports.AttendanceService = AttendanceService = AttendanceService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        notifications_service_1.NotificationsService])
 ], AttendanceService);
 //# sourceMappingURL=attendance.service.js.map

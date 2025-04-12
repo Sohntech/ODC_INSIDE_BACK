@@ -19,6 +19,8 @@ model User {
   learner      Learner?
   restaurateur Restaurateur?
   vigil        Vigil?
+  receivedNotifications Notification[] @relation("ReceivedNotifications")
+  sentNotifications    Notification[] @relation("SentNotifications")
 }
 
 model Admin {
@@ -283,6 +285,19 @@ model Event {
   promotion   Promotion @relation(fields: [promotionId], references: [id])
 }
 
+model Notification {
+  id          String           @id @default(uuid())
+  type        NotificationType
+  message     String
+  read        Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  receiverId  String          // ID of the user receiving the notification
+  senderId    String?         // Optional: ID of the user sending the notification
+  attendanceId String?        // Optional: Related attendance record
+  receiver    User            @relation("ReceivedNotifications", fields: [receiverId], references: [id])
+  sender      User?           @relation("SentNotifications", fields: [senderId], references: [id])
+}
+
 enum UserRole {
   ADMIN
   COACH
@@ -310,7 +325,14 @@ enum PromotionStatus {
 }
 
 enum AbsenceStatus {
-  PENDING
-  APPROVED
-  REJECTED
+  TO_JUSTIFY    // Nouvel état initial
+  PENDING       // En attente après soumission
+  APPROVED      // Approuvé
+  REJECTED      // Rejeté
+}
+
+enum NotificationType {
+  JUSTIFICATION_SUBMITTED
+  JUSTIFICATION_APPROVED
+  JUSTIFICATION_REJECTED
 }

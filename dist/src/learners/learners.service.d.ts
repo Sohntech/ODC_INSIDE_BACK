@@ -22,12 +22,12 @@ export declare class LearnersService {
     }): Promise<Learner>;
     uploadDocument(id: string, file: Express.Multer.File, type: string, name: string): Promise<{
         id: string;
-        name: string;
-        type: string;
-        url: string;
-        learnerId: string;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        type: string;
+        learnerId: string;
+        url: string;
     }>;
     getAttendanceStats(id: string): Promise<{
         totalDays: number;
@@ -42,19 +42,19 @@ export declare class LearnersService {
     getWaitingList(promotionId?: string): Promise<Learner[]>;
     getStatusHistory(learnerId: string): Promise<{
         id: string;
+        date: Date;
         learnerId: string;
         previousStatus: import(".prisma/client").$Enums.LearnerStatus | null;
         newStatus: import(".prisma/client").$Enums.LearnerStatus;
         reason: string | null;
-        date: Date;
     }[]>;
     getDocuments(learnerId: string): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         name: string;
         type: string;
         url: string;
-        createdAt: Date;
-        updatedAt: Date;
     }[]>;
     getAttendanceByLearner(learnerId: string): import(".prisma/client").Prisma.PrismaPromise<({
         learner: {
@@ -68,16 +68,16 @@ export declare class LearnersService {
         };
     } & {
         id: string;
-        learnerId: string;
+        status: import(".prisma/client").$Enums.AbsenceStatus;
         createdAt: Date;
         updatedAt: Date;
         date: Date;
+        learnerId: string;
         isPresent: boolean;
         isLate: boolean;
         scanTime: Date | null;
         justification: string | null;
         justificationComment: string | null;
-        status: import(".prisma/client").$Enums.AbsenceStatus;
         documentUrl: string | null;
     })[]>;
 }

@@ -5,12 +5,12 @@ export declare class ModulesController {
     constructor(modulesService: ModulesService);
     create(createModuleDto: CreateModuleDto, photoFile?: Express.Multer.File): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        name: string;
         photoUrl: string | null;
         refId: string;
+        createdAt: Date;
+        updatedAt: Date;
         sessionId: string | null;
+        name: string;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -18,12 +18,12 @@ export declare class ModulesController {
     }>;
     findAll(): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        name: string;
         photoUrl: string | null;
         refId: string;
+        createdAt: Date;
+        updatedAt: Date;
         sessionId: string | null;
+        name: string;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -31,12 +31,12 @@ export declare class ModulesController {
     }[]>;
     getActiveModules(): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        name: string;
         photoUrl: string | null;
         refId: string;
+        createdAt: Date;
+        updatedAt: Date;
         sessionId: string | null;
+        name: string;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -44,12 +44,12 @@ export declare class ModulesController {
     }[]>;
     getModulesByReferential(refId: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        name: string;
         photoUrl: string | null;
         refId: string;
+        createdAt: Date;
+        updatedAt: Date;
         sessionId: string | null;
+        name: string;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -57,12 +57,12 @@ export declare class ModulesController {
     }[]>;
     findOne(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        name: string;
         photoUrl: string | null;
         refId: string;
+        createdAt: Date;
+        updatedAt: Date;
         sessionId: string | null;
+        name: string;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -87,12 +87,12 @@ export declare class ModulesController {
     }[]>;
     update(id: string, data: any): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        name: string;
         photoUrl: string | null;
         refId: string;
+        createdAt: Date;
+        updatedAt: Date;
         sessionId: string | null;
+        name: string;
         description: string | null;
         startDate: Date;
         endDate: Date;
@@ -105,8 +105,6 @@ export declare class ModulesController {
     }): Promise<{
         learner: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             matricule: string;
             firstName: string;
             lastName: string;
@@ -121,16 +119,18 @@ export declare class ModulesController {
             userId: string;
             refId: string | null;
             promotionId: string;
+            createdAt: Date;
+            updatedAt: Date;
             sessionId: string | null;
         };
         module: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            name: string;
             photoUrl: string | null;
             refId: string;
+            createdAt: Date;
+            updatedAt: Date;
             sessionId: string | null;
+            name: string;
             description: string | null;
             startDate: Date;
             endDate: Date;
@@ -138,12 +138,12 @@ export declare class ModulesController {
         };
     } & {
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;
-        learnerId: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     updateGrade(gradeId: string, data: {
         value: number;
@@ -151,8 +151,6 @@ export declare class ModulesController {
     }): Promise<{
         learner: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             matricule: string;
             firstName: string;
             lastName: string;
@@ -167,16 +165,18 @@ export declare class ModulesController {
             userId: string;
             refId: string | null;
             promotionId: string;
+            createdAt: Date;
+            updatedAt: Date;
             sessionId: string | null;
         };
         module: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            name: string;
             photoUrl: string | null;
             refId: string;
+            createdAt: Date;
+            updatedAt: Date;
             sessionId: string | null;
+            name: string;
             description: string | null;
             startDate: Date;
             endDate: Date;
@@ -184,11 +184,11 @@ export declare class ModulesController {
         };
     } & {
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        learnerId: string;
         value: number;
         comment: string | null;
         moduleId: string;
-        learnerId: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
 }
