@@ -2,7 +2,7 @@ import { IsString, IsNotEmpty, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { LearnerStatus } from '@prisma/client';
 
-export class ReplacementDto {
+export class ReplaceLearnerDto {
   @ApiProperty({ description: 'ID of the active learner to be replaced' })
   @IsString()
   @IsNotEmpty()
@@ -11,7 +11,7 @@ export class ReplacementDto {
   @ApiProperty({ description: 'ID of the waiting list learner' })
   @IsString()
   @IsNotEmpty()
-  waitingLearnerId: string;
+  replacementLearnerId: string;  // Changed from waitingLearnerId
 
   @ApiProperty({ description: 'Reason for replacement' })
   @IsString()

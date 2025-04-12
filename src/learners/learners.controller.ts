@@ -15,7 +15,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiQuery } from '@nestjs/swagger';
 import { LearnersService } from './learners.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -47,6 +47,32 @@ export class LearnersController {
     return this.learnersService.findAll();
   }
 
+  @Post(':id/documents')
+  @Roles(UserRole.ADMIN, UserRole.APPRENANT)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Télécharger un document pour un apprenant' })
+  @ApiConsumes('multipart/form-data')
+  async uploadDocument(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('type') type: string,
+    @Body('name') name: string,
+  ) {
+    return this.learnersService.uploadDocument(id, file, type, name);
+  }
+
+  @Get('waiting-list')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get waiting list learners' })
+  @ApiResponse({ status: 200, description: 'Returns list of waiting learners' })
+  @ApiResponse({ status: 404, description: 'Promotion not found' })
+  @ApiQuery({ name: 'promotionId', required: false })
+  async getWaitingList(
+    @Query('promotionId') promotionId?: string
+  ): Promise<Learner[]> {
+    return this.learnersService.getWaitingList(promotionId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Récupérer un apprenant par ID' })
   async findOne(@Param('id') id: string) {
@@ -75,20 +101,6 @@ export class LearnersController {
   @ApiOperation({ summary: 'Mettre à jour le kit d\'un apprenant' })
   async updateKit(@Param('id') id: string, @Body() kitData: any) {
     return this.learnersService.updateKit(id, kitData);
-  }
-
-  @Post(':id/documents')
-  @Roles(UserRole.ADMIN, UserRole.APPRENANT)
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Télécharger un document pour un apprenant' })
-  @ApiConsumes('multipart/form-data')
-  async uploadDocument(
-    @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
-    @Body('type') type: string,
-    @Body('name') name: string,
-  ) {
-    return this.learnersService.uploadDocument(id, file, type, name);
   }
 
   @Get(':id/attendance-stats')
@@ -132,15 +144,28 @@ export class LearnersController {
     return this.learnersService.replaceLearner(replacementDto);
   }
 
-  @Get('waiting-list')
-  @UseGuards(JwtAuthGuard)
-  async getWaitingList(@Query('promotionId') promotionId?: string) {
-    return this.learnersService.getWaitingList(promotionId);
-  }
-
   @Get(':id/status-history')
   @UseGuards(JwtAuthGuard)
   async getStatusHistory(@Param('id') id: string) {
     return this.learnersService.getStatusHistory(id);
+  }
+
+  @Get(':id/documents')
+  @ApiOperation({ summary: 'Get learner documents' })
+  @ApiResponse({ status: 200, description: 'Documents retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Learner not found' })
+  async getDocuments(@Param('id') id: string) {
+    return this.learnersService.getDocuments(id);
+  }
+
+  @Get(':id/attendance')
+  @ApiOperation({ summary: 'Get learner attendance history' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Returns the learner\'s attendance records ordered by date' 
+  })
+  @ApiResponse({ status: 404, description: 'Learner not found' })
+  async getAttendance(@Param('id') id: string) {
+    return this.learnersService.getAttendanceByLearner(id);
   }
 }

@@ -1,7 +1,7 @@
 import { LearnerStatus } from '@prisma/client';
-export declare class ReplacementDto {
+export declare class ReplaceLearnerDto {
     activeLearnerForReplacement: string;
-    waitingLearnerId: string;
+    replacementLearnerId: string;
     reason: string;
 }
 export declare class UpdateStatusDto {

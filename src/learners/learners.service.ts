@@ -12,6 +12,7 @@ import { MatriculeUtils } from '../utils/matricule.utils';
 
 @Injectable()
 export class LearnersService {
+ 
   private readonly logger = new Logger(LearnersService.name);
 
   constructor(
@@ -565,16 +566,41 @@ export class LearnersService {
   }
 
   async getWaitingList(promotionId?: string): Promise<Learner[]> {
-    return this.prisma.learner.findMany({
-      where: {
-        status: 'WAITING',
-        ...(promotionId && { promotionId })
-      },
-      include: {
-        user: true,
-        promotion: true
+    try {
+      const waitingLearners = await this.prisma.learner.findMany({
+        where: {
+          status: 'WAITING',  // Explicitly use WAITING status
+          ...(promotionId && { promotionId })
+        },
+        include: {
+          user: true,
+          promotion: true,
+          referential: {
+            include: {
+              sessions: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      if (promotionId) {
+        const promotionExists = await this.prisma.promotion.findUnique({
+          where: { id: promotionId }
+        });
+
+        if (!promotionExists) {
+          throw new NotFoundException(`Promotion with ID ${promotionId} not found`);
+        }
       }
-    });
+
+      return waitingLearners;
+    } catch (error) {
+      this.logger.error('Error fetching waiting list:', error);
+      throw error;
+    }
   }
 
   async getStatusHistory(learnerId: string) {
@@ -583,5 +609,29 @@ export class LearnersService {
       orderBy: { date: 'desc' }
     });
   }
+
+  async getDocuments(learnerId: string) {
+    const learner = await this.findOne(learnerId);
+
+    const documents = await this.prisma.document.findMany({
+      where: {
+        learnerId: learnerId
+      },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        url: true,
+        createdAt: true,
+        updatedAt: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return documents;
+  }
+  getAttendanceByLearner(learnerId: string) { return this.prisma.learnerAttendance.findMany({ where: { learnerId: learnerId }, orderBy: { date: 'desc' }, include: { learner: { select: { firstName: true, lastName: true, matricule: true, photoUrl: true, referential: { select: { name: true } } } } } }); }
 }
 

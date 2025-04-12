@@ -6,6 +6,9 @@ export declare class LearnersController {
     constructor(learnersService: LearnersService);
     create(data: any, photoFile?: Express.Multer.File): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.LearnerStatus;
         matricule: string;
         firstName: string;
         lastName: string;
@@ -15,17 +18,17 @@ export declare class LearnersController {
         birthPlace: string;
         phone: string;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.LearnerStatus;
         qrCode: string;
         userId: string;
         refId: string | null;
         promotionId: string;
-        createdAt: Date;
-        updatedAt: Date;
         sessionId: string | null;
     }>;
     findAll(): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.LearnerStatus;
         matricule: string;
         firstName: string;
         lastName: string;
@@ -35,17 +38,27 @@ export declare class LearnersController {
         birthPlace: string;
         phone: string;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.LearnerStatus;
         qrCode: string;
         userId: string;
         refId: string | null;
         promotionId: string;
-        createdAt: Date;
-        updatedAt: Date;
         sessionId: string | null;
     }[]>;
+    uploadDocument(id: string, file: Express.Multer.File, type: string, name: string): Promise<{
+        id: string;
+        name: string;
+        type: string;
+        url: string;
+        learnerId: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    getWaitingList(promotionId?: string): Promise<Learner[]>;
     findOne(id: string): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.LearnerStatus;
         matricule: string;
         firstName: string;
         lastName: string;
@@ -55,17 +68,17 @@ export declare class LearnersController {
         birthPlace: string;
         phone: string;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.LearnerStatus;
         qrCode: string;
         userId: string;
         refId: string | null;
         promotionId: string;
-        createdAt: Date;
-        updatedAt: Date;
         sessionId: string | null;
     }>;
     update(id: string, data: any): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.LearnerStatus;
         matricule: string;
         firstName: string;
         lastName: string;
@@ -75,17 +88,17 @@ export declare class LearnersController {
         birthPlace: string;
         phone: string;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.LearnerStatus;
         qrCode: string;
         userId: string;
         refId: string | null;
         promotionId: string;
-        createdAt: Date;
-        updatedAt: Date;
         sessionId: string | null;
     }>;
     updateStatus(id: string, status: LearnerStatus): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.LearnerStatus;
         matricule: string;
         firstName: string;
         lastName: string;
@@ -95,17 +108,17 @@ export declare class LearnersController {
         birthPlace: string;
         phone: string;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.LearnerStatus;
         qrCode: string;
         userId: string;
         refId: string | null;
         promotionId: string;
-        createdAt: Date;
-        updatedAt: Date;
         sessionId: string | null;
     }>;
     updateKit(id: string, kitData: any): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.LearnerStatus;
         matricule: string;
         firstName: string;
         lastName: string;
@@ -115,23 +128,11 @@ export declare class LearnersController {
         birthPlace: string;
         phone: string;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.LearnerStatus;
         qrCode: string;
         userId: string;
         refId: string | null;
         promotionId: string;
-        createdAt: Date;
-        updatedAt: Date;
         sessionId: string | null;
-    }>;
-    uploadDocument(id: string, file: Express.Multer.File, type: string, name: string): Promise<{
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        name: string;
-        type: string;
-        learnerId: string;
-        url: string;
     }>;
     getAttendanceStats(id: string): Promise<{
         totalDays: number;
@@ -141,6 +142,9 @@ export declare class LearnersController {
     findByEmail(email: string, req: any): Promise<Learner>;
     patchUpdateStatus(id: string, updateStatusDto: UpdateStatusDto): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.LearnerStatus;
         matricule: string;
         firstName: string;
         lastName: string;
@@ -150,45 +154,54 @@ export declare class LearnersController {
         birthPlace: string;
         phone: string;
         photoUrl: string | null;
-        status: import(".prisma/client").$Enums.LearnerStatus;
         qrCode: string;
         userId: string;
         refId: string | null;
         promotionId: string;
-        createdAt: Date;
-        updatedAt: Date;
         sessionId: string | null;
     }>;
     replaceLearner(replacementDto: ReplaceLearnerDto): Promise<{
         replacedLearner: Learner;
         replacementLearner: Learner;
     }>;
-    getWaitingList(promotionId?: string): Promise<{
-        id: string;
-        matricule: string;
-        firstName: string;
-        lastName: string;
-        address: string | null;
-        gender: import(".prisma/client").$Enums.Gender;
-        birthDate: Date;
-        birthPlace: string;
-        phone: string;
-        photoUrl: string | null;
-        status: import(".prisma/client").$Enums.LearnerStatus;
-        qrCode: string;
-        userId: string;
-        refId: string | null;
-        promotionId: string;
-        createdAt: Date;
-        updatedAt: Date;
-        sessionId: string | null;
-    }[]>;
     getStatusHistory(id: string): Promise<{
         id: string;
-        date: Date;
         learnerId: string;
         previousStatus: import(".prisma/client").$Enums.LearnerStatus | null;
         newStatus: import(".prisma/client").$Enums.LearnerStatus;
         reason: string | null;
+        date: Date;
     }[]>;
+    getDocuments(id: string): Promise<{
+        id: string;
+        name: string;
+        type: string;
+        url: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
+    getAttendance(id: string): Promise<({
+        learner: {
+            matricule: string;
+            firstName: string;
+            lastName: string;
+            photoUrl: string;
+            referential: {
+                name: string;
+            };
+        };
+    } & {
+        id: string;
+        learnerId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        date: Date;
+        isPresent: boolean;
+        isLate: boolean;
+        scanTime: Date | null;
+        justification: string | null;
+        justificationComment: string | null;
+        status: import(".prisma/client").$Enums.AbsenceStatus;
+        documentUrl: string | null;
+    })[]>;
 }

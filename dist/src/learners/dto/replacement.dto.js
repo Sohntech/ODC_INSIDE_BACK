@@ -9,31 +9,31 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateStatusDto = exports.ReplacementDto = void 0;
+exports.UpdateStatusDto = exports.ReplaceLearnerDto = void 0;
 const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
 const client_1 = require("@prisma/client");
-class ReplacementDto {
+class ReplaceLearnerDto {
 }
-exports.ReplacementDto = ReplacementDto;
+exports.ReplaceLearnerDto = ReplaceLearnerDto;
 __decorate([
     (0, swagger_1.ApiProperty)({ description: 'ID of the active learner to be replaced' }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], ReplacementDto.prototype, "activeLearnerForReplacement", void 0);
+], ReplaceLearnerDto.prototype, "activeLearnerForReplacement", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ description: 'ID of the waiting list learner' }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], ReplacementDto.prototype, "waitingLearnerId", void 0);
+], ReplaceLearnerDto.prototype, "replacementLearnerId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ description: 'Reason for replacement' }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], ReplacementDto.prototype, "reason", void 0);
+], ReplaceLearnerDto.prototype, "reason", void 0);
 class UpdateStatusDto {
 }
 exports.UpdateStatusDto = UpdateStatusDto;

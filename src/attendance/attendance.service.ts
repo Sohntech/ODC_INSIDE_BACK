@@ -687,4 +687,30 @@ export class AttendanceService {
       throw error;
     }
   }
+
+  async getAttendanceByLearner(learnerId: string) {
+    return this.prisma.learnerAttendance.findMany({
+      where: {
+        learnerId: learnerId
+      },
+      orderBy: {
+        date: 'desc'
+      },
+      include: {
+        learner: {
+          select: {
+            firstName: true,
+            lastName: true,
+            matricule: true,
+            photoUrl: true,
+            referential: {
+              select: {
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+  }
 }

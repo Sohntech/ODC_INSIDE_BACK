@@ -32,6 +32,12 @@ let LearnersController = class LearnersController {
     async findAll() {
         return this.learnersService.findAll();
     }
+    async uploadDocument(id, file, type, name) {
+        return this.learnersService.uploadDocument(id, file, type, name);
+    }
+    async getWaitingList(promotionId) {
+        return this.learnersService.getWaitingList(promotionId);
+    }
     async findOne(id) {
         return this.learnersService.findOne(id);
     }
@@ -43,9 +49,6 @@ let LearnersController = class LearnersController {
     }
     async updateKit(id, kitData) {
         return this.learnersService.updateKit(id, kitData);
-    }
-    async uploadDocument(id, file, type, name) {
-        return this.learnersService.uploadDocument(id, file, type, name);
     }
     async getAttendanceStats(id) {
         return this.learnersService.getAttendanceStats(id);
@@ -63,11 +66,14 @@ let LearnersController = class LearnersController {
     async replaceLearner(replacementDto) {
         return this.learnersService.replaceLearner(replacementDto);
     }
-    async getWaitingList(promotionId) {
-        return this.learnersService.getWaitingList(promotionId);
-    }
     async getStatusHistory(id) {
         return this.learnersService.getStatusHistory(id);
+    }
+    async getDocuments(id) {
+        return this.learnersService.getDocuments(id);
+    }
+    async getAttendance(id) {
+        return this.learnersService.getAttendanceByLearner(id);
     }
 };
 exports.LearnersController = LearnersController;
@@ -91,6 +97,32 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], LearnersController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Post)(':id/documents'),
+    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.APPRENANT),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, swagger_1.ApiOperation)({ summary: 'Télécharger un document pour un apprenant' }),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.UploadedFile)()),
+    __param(2, (0, common_1.Body)('type')),
+    __param(3, (0, common_1.Body)('name')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, String, String]),
+    __metadata("design:returntype", Promise)
+], LearnersController.prototype, "uploadDocument", null);
+__decorate([
+    (0, common_1.Get)('waiting-list'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiOperation)({ summary: 'Get waiting list learners' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Returns list of waiting learners' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Promotion not found' }),
+    (0, swagger_1.ApiQuery)({ name: 'promotionId', required: false }),
+    __param(0, (0, common_1.Query)('promotionId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], LearnersController.prototype, "getWaitingList", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Récupérer un apprenant par ID' }),
@@ -129,20 +161,6 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], LearnersController.prototype, "updateKit", null);
-__decorate([
-    (0, common_1.Post)(':id/documents'),
-    (0, roles_decorator_1.Roles)(client_1.UserRole.ADMIN, client_1.UserRole.APPRENANT),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
-    (0, swagger_1.ApiOperation)({ summary: 'Télécharger un document pour un apprenant' }),
-    (0, swagger_1.ApiConsumes)('multipart/form-data'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.UploadedFile)()),
-    __param(2, (0, common_1.Body)('type')),
-    __param(3, (0, common_1.Body)('name')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, String, String]),
-    __metadata("design:returntype", Promise)
-], LearnersController.prototype, "uploadDocument", null);
 __decorate([
     (0, common_1.Get)(':id/attendance-stats'),
     (0, swagger_1.ApiOperation)({ summary: 'Récupérer les statistiques de présence d\'un apprenant' }),
@@ -184,14 +202,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], LearnersController.prototype, "replaceLearner", null);
 __decorate([
-    (0, common_1.Get)('waiting-list'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __param(0, (0, common_1.Query)('promotionId')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], LearnersController.prototype, "getWaitingList", null);
-__decorate([
     (0, common_1.Get)(':id/status-history'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('id')),
@@ -199,6 +209,29 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], LearnersController.prototype, "getStatusHistory", null);
+__decorate([
+    (0, common_1.Get)(':id/documents'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get learner documents' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Documents retrieved successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Learner not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], LearnersController.prototype, "getDocuments", null);
+__decorate([
+    (0, common_1.Get)(':id/attendance'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get learner attendance history' }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: 'Returns the learner\'s attendance records ordered by date'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Learner not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], LearnersController.prototype, "getAttendance", null);
 exports.LearnersController = LearnersController = __decorate([
     (0, swagger_1.ApiTags)('learners'),
     (0, common_1.Controller)('learners'),

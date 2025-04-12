@@ -578,6 +578,31 @@ let AttendanceService = AttendanceService_1 = class AttendanceService {
             throw error;
         }
     }
+    async getAttendanceByLearner(learnerId) {
+        return this.prisma.learnerAttendance.findMany({
+            where: {
+                learnerId: learnerId
+            },
+            orderBy: {
+                date: 'desc'
+            },
+            include: {
+                learner: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        matricule: true,
+                        photoUrl: true,
+                        referential: {
+                            select: {
+                                name: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 };
 exports.AttendanceService = AttendanceService;
 __decorate([
