@@ -78,6 +78,9 @@ let AttendanceController = AttendanceController_1 = class AttendanceController {
     async getPromotionAttendance(promotionId, startDate, endDate) {
         return this.attendanceService.getPromotionAttendance(promotionId, new Date(startDate), new Date(endDate));
     }
+    async getAttendanceByLearner(learnerId) {
+        return this.attendanceService.getAttendanceByLearner(learnerId);
+    }
 };
 exports.AttendanceController = AttendanceController;
 __decorate([
@@ -204,6 +207,17 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "getPromotionAttendance", null);
+__decorate([
+    (0, common_1.Get)('learner/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get attendance records for a specific learner' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: 'Learner ID' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Attendance records retrieved successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Learner not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendanceController.prototype, "getAttendanceByLearner", null);
 exports.AttendanceController = AttendanceController = AttendanceController_1 = __decorate([
     (0, swagger_1.ApiTags)('attendance'),
     (0, common_1.Controller)('attendance'),

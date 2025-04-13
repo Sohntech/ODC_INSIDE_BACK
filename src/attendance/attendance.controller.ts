@@ -177,4 +177,13 @@ export class AttendanceController {
       new Date(endDate)
     );
   }
+
+  @Get('learner/:id')
+  @ApiOperation({ summary: 'Get attendance records for a specific learner' })
+  @ApiParam({ name: 'id', description: 'Learner ID' })
+  @ApiResponse({ status: 200, description: 'Attendance records retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Learner not found' })
+  async getAttendanceByLearner(@Param('id') learnerId: string) {
+    return this.attendanceService.getAttendanceByLearner(learnerId);
+  }
 }
